@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: parking
+    description: Campus parking operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,93 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /garages:
+    get:
+      operationId: listGarages
+      tags: [parking]
+      summary: List campus garages
+      description: Returns parking garages and lots for the active campus.
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [nearest, most_available, least_full]
+            default: nearest
+      responses:
+        "200":
+          description: Parking garages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Garage"
+  /garages/{garageId}:
+    get:
+      operationId: getGarage
+      tags: [parking]
+      summary: Get garage details
+      parameters:
+        - name: garageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Garage details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Garage"
+        "404":
+          description: Garage not found
+  /garages/{garageId}/availability:
+    patch:
+      operationId: updateGarageAvailability
+      tags: [parking]
+      summary: Update a garage availability snapshot
+      description: Backend-ready endpoint for future university parking data feeds.
+      parameters:
+        - name: garageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvailabilityUpdate"
+      responses:
+        "200":
+          description: Updated garage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Garage"
+        "404":
+          description: Garage not found
+  /campus/summary:
+    get:
+      operationId: getCampusSummary
+      tags: [parking]
+      summary: Get campus parking summary
+      responses:
+        "200":
+          description: Campus parking summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampusSummary"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +122,94 @@ components:
           type: string
       required:
         - status
+    Garage:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        shortName:
+          type: string
+        address:
+          type: string
+        type:
+          type: string
+          enum: [garage, lot]
+        availableSpots:
+          type: integer
+        totalSpots:
+          type: integer
+        occupancyPercent:
+          type: integer
+        distanceMiles:
+          type: number
+        driveTimeMinutes:
+          type: integer
+        walkingTimeMinutes:
+          type: integer
+        status:
+          type: string
+          enum: [open, filling_up, nearly_full]
+        openHours:
+          type: string
+        price:
+          type: string
+        permits:
+          type: array
+          items:
+            type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - shortName
+        - address
+        - type
+        - availableSpots
+        - totalSpots
+        - occupancyPercent
+        - distanceMiles
+        - driveTimeMinutes
+        - walkingTimeMinutes
+        - status
+        - openHours
+        - price
+        - permits
+        - latitude
+        - longitude
+        - updatedAt
+    AvailabilityUpdate:
+      type: object
+      properties:
+        availableSpots:
+          type: integer
+          minimum: 0
+        totalSpots:
+          type: integer
+          minimum: 1
+      required:
+        - availableSpots
+        - totalSpots
+    CampusSummary:
+      type: object
+      properties:
+        openSpots:
+          type: integer
+        totalSpots:
+          type: integer
+        garagesCount:
+          type: integer
+        lastUpdatedAt:
+          type: string
+      required:
+        - openSpots
+        - totalSpots
+        - garagesCount
+        - lastUpdatedAt
 

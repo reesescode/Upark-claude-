@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "UPARK Campus Parking"
+description = "A responsive campus parking companion for college students to find nearby garages, compare live-style availability, save favorites, and navigate to the best option."
+version = "1.0.0"
+id = "artifacts/upark"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22724
+
+[services.development]
+run = "pnpm --filter @workspace/upark run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/upark", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/upark/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22724"
+BASE_PATH = "/"
