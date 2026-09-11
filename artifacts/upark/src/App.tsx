@@ -11,30 +11,27 @@ import {
   Router as WouterRouter,
 } from 'wouter';
 
-const queryClient = new QueryClient();
+import Home from '@/pages/Home';
+import Map from '@/pages/Map';
+import Garages from '@/pages/Garages';
+import GarageDetails from '@/pages/GarageDetails';
+import Navigate from '@/pages/Navigate';
+import Favorites from '@/pages/Favorites';
+import Profile from '@/pages/Profile';
 
-function Home() {
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Replit Agent is building...
-        </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Your app will appear here once it's ready.
-        </p>
-      </div>
-    </div>
-  );
-}
+const queryClient = new QueryClient();
 
 function Router() {
   return (
-    // Keep a shared shell (sidebar, navbar) outside the boundary so it
-    // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/map" component={Map} />
+        <Route path="/garages" component={Garages} />
+        <Route path="/garages/:id" component={GarageDetails} />
+        <Route path="/navigate/:id" component={Navigate} />
+        <Route path="/favorites" component={Favorites} />
+        <Route path="/profile" component={Profile} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

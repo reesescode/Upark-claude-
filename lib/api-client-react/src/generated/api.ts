@@ -311,7 +311,13 @@ export const updateGarageAvailability = async (garageId: string,
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (h instanceof Headers) {
+      const headers: Record<string, string> = {};
+      h.forEach((value, name) => {
+        headers[name] = value;
+      });
+      return headers;
+    }
     if (Symbol.iterator in h) {
       return Object.fromEntries(
         Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
