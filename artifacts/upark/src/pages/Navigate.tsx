@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useGetGarage } from "@workspace/api-client-react";
 import { X, Navigation2, AlertTriangle, LocateFixed, ExternalLink } from "lucide-react";
@@ -17,6 +17,24 @@ type RouteResult = {
   durationSeconds: number;
   coordinates: [number, number][];
 };
+
+const ROUTE_REFRESH_DISTANCE_METERS = 40;
+const ROUTE_REFRESH_INTERVAL_MS = 15_000;
+
+function distanceBetweenMeters(from: Coordinates, to: Coordinates) {
+  const earthRadiusMeters = 6_371_000;
+  const toRadians = (degrees: number) => degrees * Math.PI / 180;
+  const latitudeDelta = toRadians(to.lat - from.lat);
+  const longitudeDelta = toRadians(to.lng - from.lng);
+  const fromLatitude = toRadians(from.lat);
+  const toLatitude = toRadians(to.lat);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(fromLatitude) * Math.cos(toLatitude) *
+      Math.sin(longitudeDelta / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.asin(Math.sqrt(haversine));
+}
 
 function RouteBounds({
   origin,
@@ -90,6 +108,14 @@ export default function Navigate() {
     "requesting" | "ready" | "denied" | "unavailable"
   >("requesting");
   const [routeError, setRouteError] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const lastRouteOriginRef = useRef<Coordinates | null>(null);
+  const lastRouteRefreshAtRef = useRef(0);
+  const routeRef = useRef<RouteResult | null>(null);
+
+  useEffect(() => {
+    routeRef.current = route;
+  }, [route]);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -98,16 +124,30 @@ export default function Navigate() {
     }
 
     setLocationStatus("requesting");
-    navigator.geolocation.getCurrentPosition(
+    const watchId = navigator.geolocation.watchPosition(
       ({ coords }) => {
-        setOrigin({ lat: coords.latitude, lng: coords.longitude });
+        const nextOrigin = { lat: coords.latitude, lng: coords.longitude };
+        const lastRouteOrigin = lastRouteOriginRef.current;
+        const enoughTimePassed =
+          Date.now() - lastRouteRefreshAtRef.current >= ROUTE_REFRESH_INTERVAL_MS;
+        const movedEnough =
+          !lastRouteOrigin ||
+          distanceBetweenMeters(lastRouteOrigin, nextOrigin) >= ROUTE_REFRESH_DISTANCE_METERS;
+
+        if (movedEnough && (!lastRouteOrigin || enoughTimePassed)) {
+          lastRouteOriginRef.current = nextOrigin;
+          lastRouteRefreshAtRef.current = Date.now();
+          setOrigin(nextOrigin);
+        }
         setLocationStatus("ready");
       },
       (error) => {
         setLocationStatus(error.code === error.PERMISSION_DENIED ? "denied" : "unavailable");
       },
-      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 30_000 },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 10_000 },
     );
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
   const destination = useMemo(
@@ -118,13 +158,17 @@ export default function Navigate() {
   useEffect(() => {
     if (!origin || !destination) return;
     const controller = new AbortController();
-    setRoute(null);
+    setIsRecalculating(routeRef.current !== null);
     setRouteError(false);
     fetchDrivingRoute(origin, destination, controller.signal)
-      .then(setRoute)
+      .then((nextRoute) => {
+        setRoute(nextRoute);
+        setIsRecalculating(false);
+      })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
           setRouteError(true);
+          setIsRecalculating(false);
         }
       });
     return () => controller.abort();
@@ -175,10 +219,22 @@ export default function Navigate() {
           </div>
           <div data-testid="status-route" className="min-w-0">
             <h2 className="text-xl font-bold text-white leading-tight mb-1">
-              {route ? `Driving to ${garage.shortName}` : routeError ? "Route unavailable" : statusMessage}
+              {route
+                ? isRecalculating
+                  ? "Recalculating route…"
+                  : `Driving to ${garage.shortName}`
+                : routeError
+                  ? "Route unavailable"
+                  : statusMessage}
             </h2>
             <span className="text-white/60 font-semibold">
-              {route ? "Follow the highlighted route" : routeError ? "Open directions below to continue" : garage.address}
+              {route
+                ? isRecalculating
+                  ? "Keeping your current route visible"
+                  : "Follow the highlighted route"
+                : routeError
+                  ? "Open directions below to continue"
+                  : garage.address}
             </span>
           </div>
         </div>
