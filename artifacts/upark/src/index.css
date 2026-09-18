@@ -197,3 +197,33 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.leaflet-top.leaflet-right {
+  top: 104px;
+  right: 12px;
+}
+
+.leaflet-control-zoom {
+  border: 0 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.16) !important;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom a {
+  align-items: center;
+  border: 0 !important;
+  color: #334155 !important;
+  display: flex;
+  font-family: var(--app-font-sans);
+  font-weight: 700;
+  height: 42px !important;
+  justify-content: center;
+  line-height: 42px !important;
+  width: 42px !important;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+  margin-bottom: 72px !important;
+}
