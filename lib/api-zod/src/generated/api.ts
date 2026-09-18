@@ -134,6 +134,49 @@ export const CreateParkingReportResponse = zod.object({
 
 
 /**
+ * Returns a server-managed driving route from the supplied origin to the garage's verified coordinates.
+ * @summary Get a driving route to a campus garage
+ */
+export const GetGarageRouteParams = zod.object({
+  "garageId": zod.coerce.string()
+})
+
+export const getGarageRouteBodyOriginLatMin = -90;
+export const getGarageRouteBodyOriginLatMax = 90;
+
+export const getGarageRouteBodyOriginLngMin = -180;
+export const getGarageRouteBodyOriginLngMax = 180;
+
+
+
+export const GetGarageRouteBody = zod.object({
+  "originLat": zod.number().min(getGarageRouteBodyOriginLatMin).max(getGarageRouteBodyOriginLatMax),
+  "originLng": zod.number().min(getGarageRouteBodyOriginLngMin).max(getGarageRouteBodyOriginLngMax)
+})
+
+export const getGarageRouteResponseDistanceMetersMin = 0;
+
+export const getGarageRouteResponseDurationSecondsMin = 0;
+
+export const getGarageRouteResponseCoordinatesItem0ItemMin = -90;
+export const getGarageRouteResponseCoordinatesItem0ItemMax = 90;
+
+export const getGarageRouteResponseCoordinatesItem1ItemMin = -180;
+export const getGarageRouteResponseCoordinatesItem1ItemMax = 180;
+
+export const getGarageRouteResponseCoordinatesMin = 2;
+
+
+
+export const GetGarageRouteResponse = zod.object({
+  "distanceMeters": zod.number().min(getGarageRouteResponseDistanceMetersMin),
+  "durationSeconds": zod.number().min(getGarageRouteResponseDurationSecondsMin),
+  "coordinates": zod.array(zod.tuple([zod.number().min(getGarageRouteResponseCoordinatesItem0ItemMin).max(getGarageRouteResponseCoordinatesItem0ItemMax),
+zod.number().min(getGarageRouteResponseCoordinatesItem1ItemMin).max(getGarageRouteResponseCoordinatesItem1ItemMax)])).min(getGarageRouteResponseCoordinatesMin)
+})
+
+
+/**
  * @summary Get campus parking summary
  */
 export const GetCampusSummaryResponse = zod.object({

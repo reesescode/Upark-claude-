@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { useGetGarage } from "@workspace/api-client-react";
+import { getGarageRoute, useGetGarage } from "@workspace/api-client-react";
 import { X, Navigation2, AlertTriangle, LocateFixed, ExternalLink } from "lucide-react";
 import {
   MapContainer,
@@ -69,32 +69,20 @@ function formatDistance(meters: number) {
 }
 
 async function fetchDrivingRoute(
+  garageId: string,
   origin: Coordinates,
-  destination: Coordinates,
   signal: AbortSignal,
 ): Promise<RouteResult> {
-  const coordinates = `${origin.lng},${origin.lat};${destination.lng},${destination.lat}`;
-  const response = await fetch(
-    `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`,
+  const route = await getGarageRoute(
+    garageId,
+    { originLat: origin.lat, originLng: origin.lng },
     { signal },
   );
-  if (!response.ok) throw new Error("Routing service unavailable");
-
-  const payload = await response.json() as {
-    code?: string;
-    routes?: Array<{
-      distance: number;
-      duration: number;
-      geometry: { coordinates: [number, number][] };
-    }>;
-  };
-  const route = payload.routes?.[0];
-  if (payload.code !== "Ok" || !route) throw new Error("No driving route found");
 
   return {
-    distanceMeters: route.distance,
-    durationSeconds: route.duration,
-    coordinates: route.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+    distanceMeters: route.distanceMeters,
+    durationSeconds: route.durationSeconds,
+    coordinates: route.coordinates.map(([lat, lng]) => [lat, lng]),
   };
 }
 
@@ -124,30 +112,38 @@ export default function Navigate() {
     }
 
     setLocationStatus("requesting");
-    const watchId = navigator.geolocation.watchPosition(
-      ({ coords }) => {
-        const nextOrigin = { lat: coords.latitude, lng: coords.longitude };
-        const lastRouteOrigin = lastRouteOriginRef.current;
-        const enoughTimePassed =
-          Date.now() - lastRouteRefreshAtRef.current >= ROUTE_REFRESH_INTERVAL_MS;
-        const movedEnough =
-          !lastRouteOrigin ||
-          distanceBetweenMeters(lastRouteOrigin, nextOrigin) >= ROUTE_REFRESH_DISTANCE_METERS;
+    const handlePosition = ({ coords }: GeolocationPosition) => {
+      const nextOrigin = { lat: coords.latitude, lng: coords.longitude };
+      const lastRouteOrigin = lastRouteOriginRef.current;
+      const enoughTimePassed =
+        Date.now() - lastRouteRefreshAtRef.current >= ROUTE_REFRESH_INTERVAL_MS;
+      const movedEnough =
+        !lastRouteOrigin ||
+        distanceBetweenMeters(lastRouteOrigin, nextOrigin) >= ROUTE_REFRESH_DISTANCE_METERS;
 
-        if (movedEnough && (!lastRouteOrigin || enoughTimePassed)) {
-          lastRouteOriginRef.current = nextOrigin;
-          lastRouteRefreshAtRef.current = Date.now();
-          setOrigin(nextOrigin);
-        }
-        setLocationStatus("ready");
-      },
-      (error) => {
-        setLocationStatus(error.code === error.PERMISSION_DENIED ? "denied" : "unavailable");
-      },
-      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 10_000 },
-    );
+      if (movedEnough && (!lastRouteOrigin || enoughTimePassed)) {
+        lastRouteOriginRef.current = nextOrigin;
+        lastRouteRefreshAtRef.current = Date.now();
+        setOrigin(nextOrigin);
+      }
+      setLocationStatus("ready");
+    };
+    const handleError = (error: GeolocationPositionError) => {
+      setLocationStatus(error.code === error.PERMISSION_DENIED ? "denied" : "unavailable");
+    };
+    const options = { enableHighAccuracy: true, timeout: 12_000, maximumAge: 10_000 };
 
-    return () => navigator.geolocation.clearWatch(watchId);
+    if (typeof navigator.geolocation.watchPosition === "function") {
+      const watchId = navigator.geolocation.watchPosition(
+        handlePosition,
+        handleError,
+        options,
+      );
+      return () => navigator.geolocation.clearWatch(watchId);
+    }
+
+    navigator.geolocation.getCurrentPosition(handlePosition, handleError, options);
+    return undefined;
   }, []);
 
   const destination = useMemo(
@@ -160,7 +156,7 @@ export default function Navigate() {
     const controller = new AbortController();
     setIsRecalculating(routeRef.current !== null);
     setRouteError(false);
-    fetchDrivingRoute(origin, destination, controller.signal)
+    fetchDrivingRoute(id!, origin, controller.signal)
       .then((nextRoute) => {
         setRoute(nextRoute);
         setIsRecalculating(false);
@@ -172,7 +168,7 @@ export default function Navigate() {
         }
       });
     return () => controller.abort();
-  }, [destination, origin]);
+  }, [destination, id, origin]);
 
   if (isLoading || !garage) {
     return <div className="h-screen w-full bg-gray-900 flex items-center justify-center" />;

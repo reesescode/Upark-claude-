@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: parking
     description: Campus parking operations
+  - name: routing
+    description: Campus driving route operations
 paths:
   /healthz:
     get:
@@ -136,6 +138,60 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ParkingReportRateLimitError"
+  /garages/{garageId}/route:
+    post:
+      operationId: getGarageRoute
+      tags: [routing]
+      summary: Get a driving route to a campus garage
+      description: Returns a server-managed driving route from the supplied origin to the garage's verified coordinates.
+      parameters:
+        - name: garageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouteOriginInput"
+      responses:
+        "200":
+          description: Driving route
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DrivingRoute"
+        "400":
+          description: Invalid route request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoutingError"
+        "404":
+          description: Garage not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoutingError"
+        "429":
+          description: Too many route requests
+          headers:
+            Retry-After:
+              description: Seconds until another route request may be attempted
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoutingError"
+        "503":
+          description: Routing provider unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoutingError"
   /campus/summary:
     get:
       operationId: getCampusSummary
@@ -284,6 +340,53 @@ components:
         type: string
         minLength: 1
   schemas:
+    RouteCoordinate:
+      type: array
+      prefixItems:
+        - type: number
+          minimum: -90
+          maximum: 90
+        - type: number
+          minimum: -180
+          maximum: 180
+      minItems: 2
+      maxItems: 2
+    RouteOriginInput:
+      type: object
+      properties:
+        originLat:
+          type: number
+          minimum: -90
+          maximum: 90
+        originLng:
+          type: number
+          minimum: -180
+          maximum: 180
+      required: [originLat, originLng]
+    DrivingRoute:
+      type: object
+      properties:
+        distanceMeters:
+          type: number
+          minimum: 0
+        durationSeconds:
+          type: number
+          minimum: 0
+        coordinates:
+          type: array
+          minItems: 2
+          items:
+            $ref: "#/components/schemas/RouteCoordinate"
+      required: [distanceMeters, durationSeconds, coordinates]
+    RoutingError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum: [INVALID_ROUTE_REQUEST, GARAGE_NOT_FOUND, ROUTE_RATE_LIMITED, ROUTE_UNAVAILABLE]
+      required: [error, code]
     HealthStatus:
       type: object
       properties:

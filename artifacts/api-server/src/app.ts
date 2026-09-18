@@ -13,6 +13,10 @@ import {
 
 const app: Express = express();
 
+// Replit's ingress reaches the app from a private or loopback address. Trust
+// forwarded client IPs only from those proxy ranges, never from the public web.
+app.set("trust proxy", ["loopback", "linklocal", "uniquelocal"]);
+
 app.use(
   pinoHttp({
     logger,

@@ -4,3 +4,4 @@
 - [Browser profile identity](browser-profile-identity.md) — never auto-link legacy browser IDs to managed-auth profiles without independent ownership proof.
 - [Parking Logix HTTP client](logix-feed-http-client.md) — poll the FGCU widget with Node HTTPS; built-in fetch timed out while HTTPS succeeded.
 - [Leaflet DivIcon accessibility](leaflet-divicon-accessibility.md) — custom div markers need an explicit DOM aria-label after Leaflet adds them.
+- [Orval mixed parameter collision](orval-mixed-parameter-collision.md) — operations mixing path and query parameters can produce duplicate Zod/type names; prefer a referenced body for complex inputs.
