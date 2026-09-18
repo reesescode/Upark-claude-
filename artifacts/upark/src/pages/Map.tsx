@@ -67,6 +67,7 @@ function GarageMarker({
   isSelected: boolean;
   onClick: () => void;
 }) {
+  const accessibleName = `${garage.name}: ${garage.availableSpots} spaces available, ${getGarageStatusInfo(garage.occupancyPercent).text}`;
   const icon = useMemo(() => {
     const status = getGarageStatusInfo(garage.occupancyPercent);
     const scaleClass = isSelected ? 'scale-110 shadow-xl' : 'scale-100 shadow-md';
@@ -93,8 +94,12 @@ function GarageMarker({
     <Marker
       position={[garage.latitude, garage.longitude]}
       icon={icon}
-      eventHandlers={{ click: onClick }}
-      alt={`${garage.name}: ${garage.availableSpots} spaces available, ${getGarageStatusInfo(garage.occupancyPercent).text}`}
+      eventHandlers={{
+        add: ({ target }) =>
+          target.getElement()?.setAttribute("aria-label", accessibleName),
+        click: onClick,
+      }}
+      alt={accessibleName}
       title={`${garage.name}: ${garage.availableSpots} spaces available`}
       zIndexOffset={isSelected ? 1000 : 0}
     />

@@ -12,7 +12,57 @@ import app from "../app";
 
 const garageId = `parking-test-${randomUUID()}`;
 const demoGarageId = `parking-demo-test-${randomUUID()}`;
-const legacyGarageCanonicalId = `fgcu-garage-4-${randomUUID()}`;
+const verifiedFgcuLocations = [
+  {
+    id: "arts-garage",
+    name: "Parking Garage 4",
+    shortName: "Garage 4",
+    latitude: 26.4647786,
+    longitude: -81.7762832,
+  },
+  {
+    id: "east-lot",
+    name: "Parking Lot P7",
+    shortName: "Lot P7",
+    latitude: 26.4601991,
+    longitude: -81.7725569,
+  },
+  {
+    id: "fgcu-lot-8",
+    name: "Parking Lot P8",
+    shortName: "Lot P8",
+    latitude: 26.4652888,
+    longitude: -81.7692184,
+  },
+  {
+    id: "library-garage",
+    name: "Parking Garage 3",
+    shortName: "Garage 3",
+    latitude: 26.4667616,
+    longitude: -81.774101,
+  },
+  {
+    id: "north-deck",
+    name: "Parking Garage 1",
+    shortName: "Garage 1",
+    latitude: 26.4657261,
+    longitude: -81.7701293,
+  },
+  {
+    id: "science-center",
+    name: "Parking Garage 2",
+    shortName: "Garage 2",
+    latitude: 26.4594499,
+    longitude: -81.7727723,
+  },
+  {
+    id: "stadium-lot",
+    name: "Parking Lot P6",
+    shortName: "Lot P6",
+    latitude: 26.4665309,
+    longitude: -81.7718097,
+  },
+] as const;
 
 describe("parking report routes", () => {
   beforeAll(async () => {
@@ -51,23 +101,6 @@ describe("parking report routes", () => {
         latitude: 0,
         longitude: 0,
       },
-      {
-        id: legacyGarageCanonicalId,
-        name: "FGCU Parking Garage 4",
-        shortName: "Garage 4",
-        address: "12101 FGCU Lake Parkway E",
-        type: "garage",
-        availableSpots: 100,
-        totalSpots: 200,
-        distanceMiles: 0.8,
-        driveTimeMinutes: 4,
-        walkingTimeMinutes: 8,
-        openHours: "24 hours",
-        price: "Free",
-        permits: ["student"],
-        latitude: 26.458721,
-        longitude: -81.773214,
-      },
     ]);
   });
 
@@ -78,7 +111,6 @@ describe("parking report routes", () => {
         inArray(garagesTable.id, [
           garageId,
           demoGarageId,
-          legacyGarageCanonicalId,
         ]),
       );
     await pool.end();
@@ -202,11 +234,39 @@ describe("parking report routes", () => {
     const response = await request(app).get("/api/garages/garage-4").expect(200);
 
     expect(response.body).toMatchObject({
-      id: legacyGarageCanonicalId,
+      id: "arts-garage",
       shortName: "Garage 4",
-      latitude: 26.458721,
-      longitude: -81.773214,
+      latitude: 26.4647786,
+      longitude: -81.7762832,
     });
+  });
+
+  it("returns all seven verified FGCU locations at their verified coordinates", async () => {
+    const response = await request(app).get("/api/garages").expect(200);
+    const locations = response.body
+      .filter((garage: { id: string }) =>
+        verifiedFgcuLocations.some((expected) => expected.id === garage.id),
+      )
+      .map(
+        ({
+          id,
+          name,
+          shortName,
+          latitude,
+          longitude,
+        }: {
+          id: string;
+          name: string;
+          shortName: string;
+          latitude: number;
+          longitude: number;
+        }) => ({ id, name, shortName, latitude, longitude }),
+      )
+      .sort((a: { id: string }, b: { id: string }) =>
+        a.id.localeCompare(b.id),
+      );
+
+    expect(locations).toEqual(verifiedFgcuLocations);
   });
 
   it("returns 404 when listing reports for a missing garage", async () => {

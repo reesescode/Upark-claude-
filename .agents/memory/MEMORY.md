@@ -3,3 +3,4 @@
 - [Parking availability trust](parking-availability-trust.md) — never treat a client-provided student ID as verification or let unverified reports drive live estimates.
 - [Browser profile identity](browser-profile-identity.md) — keep profile data scoped to the browser-stored student ID without treating it as authentication.
 - [Parking Logix HTTP client](logix-feed-http-client.md) — poll the FGCU widget with Node HTTPS; built-in fetch timed out while HTTPS succeeded.
+- [Leaflet DivIcon accessibility](leaflet-divicon-accessibility.md) — custom div markers need an explicit DOM aria-label after Leaflet adds them.
