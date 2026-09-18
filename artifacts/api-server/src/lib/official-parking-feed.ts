@@ -1,7 +1,13 @@
 import https from "node:https";
-import { and, eq, isNull, lte, or } from "drizzle-orm";
-import { db, garagesTable } from "@workspace/db";
+import { and, eq, isNull, lt, lte, or } from "drizzle-orm";
+import {
+  db,
+  garagesTable,
+  parkingObservationsTable,
+  parkingReportsTable,
+} from "@workspace/db";
 import { logger } from "./logger";
+import { estimateGarageAvailability } from "./parking-estimator";
 
 export const FGCU_GARAGE_AVAILABILITY_PAGE =
   "https://www.fgcu.edu/parkingservices/garage-availability";
@@ -260,24 +266,86 @@ export async function syncOfficialParkingAvailability(
 
   let updatedGarages = 0;
   for (const [garageId, observation] of latestByGarage) {
-    const updated = await db
-      .update(garagesTable)
-      .set({
-        availableSpots: observation.availableSpots,
-        totalSpots: observation.totalSpots,
-        availabilityUpdatedAt: observation.observedAt,
-      })
-      .where(
-        and(
-          eq(garagesTable.id, garageId),
-          or(
-            isNull(garagesTable.availabilityUpdatedAt),
-            lte(garagesTable.availabilityUpdatedAt, observation.observedAt),
+    const didUpdate = await db.transaction(async (tx) => {
+      const [garage] = await tx
+        .select()
+        .from(garagesTable)
+        .where(eq(garagesTable.id, garageId));
+      if (
+        !garage ||
+        (garage.availabilityUpdatedAt &&
+          garage.availabilityUpdatedAt > observation.observedAt)
+      ) {
+        return false;
+      }
+
+      const [reports, priorObservations] = await Promise.all([
+        tx
+          .select()
+          .from(parkingReportsTable)
+          .where(
+            and(
+              eq(parkingReportsTable.garageId, garageId),
+              eq(parkingReportsTable.isVerified, true),
+              lte(parkingReportsTable.createdAt, observation.observedAt),
+            ),
           ),
-        ),
-      )
-      .returning({ id: garagesTable.id });
-    updatedGarages += updated.length;
+        tx
+          .select()
+          .from(parkingObservationsTable)
+          .where(
+            and(
+              eq(parkingObservationsTable.garageId, garageId),
+              lt(parkingObservationsTable.observedAt, observation.observedAt),
+            ),
+          ),
+      ]);
+      const preceding = estimateGarageAvailability(
+        garage,
+        reports,
+        reports,
+        priorObservations,
+        observation.observedAt,
+        false,
+      );
+
+      await tx
+        .insert(parkingObservationsTable)
+        .values({
+          garageId,
+          availableSpots: observation.availableSpots,
+          totalSpots: observation.totalSpots,
+          observedAt: observation.observedAt,
+          precedingEstimateSpots:
+            preceding.availabilitySource === "verified_reports"
+              ? preceding.availableSpots
+              : null,
+          precedingEstimateSource: preceding.availabilitySource,
+          precedingEstimateConfidence: preceding.availabilityConfidence,
+          precedingReportCount: preceding.availabilityReportCount,
+        })
+        .onConflictDoNothing();
+
+      const updated = await tx
+        .update(garagesTable)
+        .set({
+          availableSpots: observation.availableSpots,
+          totalSpots: observation.totalSpots,
+          availabilityUpdatedAt: observation.observedAt,
+        })
+        .where(
+          and(
+            eq(garagesTable.id, garageId),
+            or(
+              isNull(garagesTable.availabilityUpdatedAt),
+              lte(garagesTable.availabilityUpdatedAt, observation.observedAt),
+            ),
+          ),
+        )
+        .returning({ id: garagesTable.id });
+      return updated.length > 0;
+    });
+    updatedGarages += Number(didUpdate);
   }
 
   return {

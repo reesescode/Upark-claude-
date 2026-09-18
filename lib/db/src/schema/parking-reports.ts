@@ -38,6 +38,11 @@ export const parkingReportsTable = pgTable(
       table.garageId,
       table.createdAt,
     ),
+    index("parking_reports_calibration_idx").on(
+      table.garageId,
+      table.isVerified,
+      table.createdAt,
+    ),
   ],
 );
 

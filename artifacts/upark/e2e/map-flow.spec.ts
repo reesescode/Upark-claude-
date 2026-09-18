@@ -28,13 +28,17 @@ test("campus map keeps markers, disclosures, and parking routes usable", async (
     name: /Parking Garage 3: \d+ spaces available/,
   });
   await expect(marker).toBeVisible();
-  await expect(page.getByText("Demo fallback · no verified live data")).toBeVisible();
+  await expect(page.getByText(/\d+ live · \d+ awaiting live data/)).toBeVisible();
 
   await page.getByPlaceholder("Search campus...").fill("Garage 3");
   await expect(
     page.getByRole("heading", { name: "Parking Garage 3" }),
   ).toBeVisible();
-  await expect(page.getByText("Demo estimate — no verified live data yet")).toBeVisible();
+  await expect(
+    page.getByText(
+      /Live high-confidence estimate from trusted availability update/,
+    ),
+  ).toBeVisible();
 
   const detailLink = page.getByRole("link", { name: "View Garage" });
   const navigationLink = page.getByRole("link", { name: "Navigate" });
