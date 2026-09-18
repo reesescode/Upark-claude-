@@ -151,7 +151,7 @@ async function getProfileData(userId: string) {
         .limit(100),
     ]);
 
-  if (!profile || !preferences || !notifications) return null;
+  if (!profile || profile.id === null || !preferences || !notifications) return null;
   return {
     id: profile.id,
     userId: profile.userId,

@@ -6,3 +6,4 @@
 - [Leaflet DivIcon accessibility](leaflet-divicon-accessibility.md) — custom div markers need an explicit DOM aria-label after Leaflet adds them.
 - [Orval mixed parameter collision](orval-mixed-parameter-collision.md) — operations mixing path and query parameters can produce duplicate Zod/type names; prefer a referenced body for complex inputs.
 - [Clerk signup profile fields](clerk-signup-profile-fields.md) — this managed Clerk flow accepts auth fields only; persist names and university after verification.
+- [Production profile ID rollout](production-profile-id-rollout.md) — add sequence-backed profile IDs as nullable first; tighten only after production rows are backfilled.

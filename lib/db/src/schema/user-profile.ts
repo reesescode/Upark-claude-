@@ -12,7 +12,9 @@ import { garagesTable } from "./garages";
 
 export const userProfilesTable = pgTable("user_profiles", {
   userId: text("user_id").primaryKey(),
-  id: serial("id").notNull().unique(),
+  // Keep nullable for the first production migration so existing profiles can
+  // receive sequence-backed IDs without forcing a destructive table truncate.
+  id: serial("id").unique(),
   authUserId: text("auth_user_id").unique(),
   firstName: text("first_name"),
   lastName: text("last_name"),
