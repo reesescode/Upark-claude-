@@ -1,0 +1,70 @@
+Give the existing UPARK Profile page full functionality. Keep the current visual design and layout. Do not redesign the app or remove existing features. Make the existing App Preferences, Notifications, Privacy & Data, and Help & Support buttons clickable and functional.
+
+APP PREFERENCES
+Create a settings page/modal containing:
+- Default parking preference: Closest Garage / Most Available Spots / Lowest Occupancy
+- Default campus (FGCU for now)
+- Distance units: Miles / Kilometers
+- Toggle for automatically using the user's location
+- Favorite/default garage selection
+
+Save these preferences to the logged-in user's database record. When the user returns, retrieve and display their saved settings. Use the parking preference when sorting garage recommendations.
+
+NOTIFICATIONS
+Create notification settings with toggles for:
+- Garage Almost Full alerts
+- Favorite Garage availability alerts
+- Parking availability updates
+- UPARK announcements
+- Notification sound
+
+Save all notification preferences to the database. Toggles should visually update immediately and remain saved after refreshing or logging back in.
+
+PRIVACY & DATA
+Create a Privacy & Data page containing:
+- Location Services toggle
+- Allow anonymous parking data collection toggle
+- View My Data
+- Clear Parking History
+- Delete Account
+
+"View My Data" should display the user's profile information, saved preferences, favorites, and parking reports retrieved from the database.
+
+For destructive actions such as clearing history or deleting an account, require a confirmation modal before performing the action. Never delete data from a single accidental click.
+
+HELP & SUPPORT
+Create a Help & Support page containing:
+- FAQ section with expandable questions
+- "How UPARK Works"
+- "How Parking Availability Works"
+- "Report a Problem"
+- "Send Feedback"
+- Contact Support
+
+Report a Problem and Send Feedback should open a form with a category, subject, and message. When submitted, save the request to a Support_Requests database table and show a clear success confirmation.
+
+DATABASE
+Create or update the necessary tables for:
+- User_Preferences
+- Notification_Settings
+- Support_Requests
+
+Connect every setting to the logged-in user using user_id. Do not hard-code settings.
+
+USER EXPERIENCE
+Make every existing Profile menu button lead somewhere useful. Include back buttons, clear page titles, loading states, success messages, error handling, and confirmation dialogs where appropriate.
+
+Settings should save automatically when practical and show "Saved" feedback. All saved preferences must persist after a page refresh.
+
+Keep everything consistent with UPARK's existing blue-and-white design, rounded cards, icons, typography, and mobile-first layout.
+
+TESTING
+After implementation, test:
+1. Changing a preference and refreshing the page
+2. Changing notification settings and refreshing
+3. Viewing stored user data
+4. Submitting a support request and confirming it reaches the database
+5. Canceling destructive actions
+6. Navigation to and from every Profile section
+
+Fix any errors found. Do not modify unrelated working UPARK features.
