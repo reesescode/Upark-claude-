@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
 import {
   db,
   garagesTable,
@@ -24,6 +24,7 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+const REPORT_COOLDOWN_MS = 5 * 60 * 1_000;
 
 function toGarage(record: GarageRecord) {
   const occupancyPercent = Math.round(
@@ -187,18 +188,65 @@ router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
     return;
   }
 
-  const [report] = await db
-    .insert(parkingReportsTable)
-    .values({
-      userId: body.data.userId,
-      garageId: params.data.garageId,
-      availabilityStatus: body.data.availabilityStatus,
-    })
-    .returning();
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${body.data.userId}), hashtext(${params.data.garageId}))`,
+    );
+
+    const now = new Date();
+    const cooldownStartedAt = new Date(now.getTime() - REPORT_COOLDOWN_MS);
+    const [recentReport] = await tx
+      .select({ createdAt: parkingReportsTable.createdAt })
+      .from(parkingReportsTable)
+      .where(
+        and(
+          eq(parkingReportsTable.userId, body.data.userId),
+          eq(parkingReportsTable.garageId, params.data.garageId),
+          gte(parkingReportsTable.createdAt, cooldownStartedAt),
+        ),
+      )
+      .orderBy(desc(parkingReportsTable.createdAt))
+      .limit(1);
+
+    if (recentReport) {
+      const nextAllowedAt = new Date(
+        recentReport.createdAt.getTime() + REPORT_COOLDOWN_MS,
+      );
+      return {
+        kind: "rate-limited",
+        rateLimit: {
+          error: `You recently reported this garage. You can report again in ${Math.max(1, Math.ceil((nextAllowedAt.getTime() - now.getTime()) / 60_000))} minute(s).`,
+          retryAfterSeconds: Math.max(
+            1,
+            Math.ceil((nextAllowedAt.getTime() - now.getTime()) / 1_000),
+          ),
+          nextAllowedAt: nextAllowedAt.toISOString(),
+        },
+      } as const;
+    }
+
+    const [report] = await tx
+      .insert(parkingReportsTable)
+      .values({
+        userId: body.data.userId,
+        garageId: params.data.garageId,
+        availabilityStatus: body.data.availabilityStatus,
+      })
+      .returning();
+    return { kind: "created", report } as const;
+  });
+
+  if (result.kind === "rate-limited") {
+    res
+      .set("Retry-After", String(result.rateLimit.retryAfterSeconds))
+      .status(429)
+      .json(result.rateLimit);
+    return;
+  }
 
   res
     .status(201)
-    .json(CreateParkingReportResponse.parse(toParkingReport(report)));
+    .json(CreateParkingReportResponse.parse(toParkingReport(result.report)));
 });
 
 router.get("/campus/summary", async (_req, res): Promise<void> => {

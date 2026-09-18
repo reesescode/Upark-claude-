@@ -87,6 +87,13 @@ export interface ParkingReportInput {
   availabilityStatus: ParkingReportInputAvailabilityStatus;
 }
 
+export interface ParkingReportRateLimitError {
+  error: string;
+  /** @minimum 1 */
+  retryAfterSeconds: number;
+  nextAllowedAt: string;
+}
+
 export interface CampusSummary {
   openSpots: number;
   totalSpots: number;

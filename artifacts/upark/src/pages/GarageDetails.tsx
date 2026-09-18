@@ -52,6 +52,26 @@ const reportColors: Record<ParkingReport["availabilityStatus"], string> = {
   full: "bg-red-50 text-red-700 border-red-100",
 };
 
+function getReportErrorMessage(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    error.status === 429 &&
+    "data" in error &&
+    typeof error.data === "object" &&
+    error.data !== null &&
+    "error" in error.data &&
+    typeof error.data.error === "string"
+  ) {
+    return error.data.error;
+  }
+
+  return error instanceof Error
+    ? error.message
+    : "Unable to submit your report. Please try again.";
+}
+
 function formatReportedTime(createdAt: string) {
   const created = new Date(createdAt);
   if (Date.now() - created.getTime() < 60_000) return "reported just now";
@@ -128,11 +148,7 @@ export default function GarageDetails() {
           setSelectedStatus(null);
         },
         onError: (error) => {
-          setReportError(
-            error instanceof Error
-              ? error.message
-              : "Unable to submit your report. Please try again.",
-          );
+          setReportError(getReportErrorMessage(error));
         },
       },
     );

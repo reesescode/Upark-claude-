@@ -1,5 +1,6 @@
 import {
   pgEnum,
+  index,
   pgTable,
   serial,
   text,
@@ -14,19 +15,29 @@ export const parkingAvailabilityStatusEnum = pgEnum(
   ["plenty_spots", "filling_up", "almost_full", "full"],
 );
 
-export const parkingReportsTable = pgTable("parking_reports", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  garageId: text("garage_id")
-    .notNull()
-    .references(() => garagesTable.id, { onDelete: "cascade" }),
-  availabilityStatus: parkingAvailabilityStatusEnum(
-    "availability_status",
-  ).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const parkingReportsTable = pgTable(
+  "parking_reports",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    garageId: text("garage_id")
+      .notNull()
+      .references(() => garagesTable.id, { onDelete: "cascade" }),
+    availabilityStatus: parkingAvailabilityStatusEnum(
+      "availability_status",
+    ).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("parking_reports_user_garage_created_idx").on(
+      table.userId,
+      table.garageId,
+      table.createdAt,
+    ),
+  ],
+);
 
 export const insertParkingReportSchema = createInsertSchema(
   parkingReportsTable,

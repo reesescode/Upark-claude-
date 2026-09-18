@@ -26,7 +26,8 @@ import type {
   HealthStatus,
   ListGaragesParams,
   ParkingReport,
-  ParkingReportInput
+  ParkingReportInput,
+  ParkingReportRateLimitError
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -473,7 +474,7 @@ export const getCreateParkingReportUrl = (garageId: string,) => {
 }
 
 /**
- * Saves a student parking report for a garage.
+ * Saves a student parking report for a garage. A student may report the same garage once every five minutes.
  * @summary Submit a parking report
  */
 export const createParkingReport = async (garageId: string,
@@ -508,7 +509,7 @@ return customFetch<ParkingReport>(getCreateParkingReportUrl(garageId),
 
 export const getCreateParkingReportMutationKey = () => ['createParkingReport'] as const;
 
-export const getCreateParkingReportMutationOptions = <TError = ErrorType<void>,
+export const getCreateParkingReportMutationOptions = <TError = ErrorType<void | ParkingReportRateLimitError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createParkingReport>>, TError,CreateParkingReportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createParkingReport>>, TError,CreateParkingReportMutationVariables, TContext> => {
 
@@ -537,13 +538,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateParkingReportMutationResult = NonNullable<Awaited<ReturnType<typeof createParkingReport>>>
     export type CreateParkingReportMutationBody = BodyType<ParkingReportInput>
-    export type CreateParkingReportMutationError = ErrorType<void>
+    export type CreateParkingReportMutationError = ErrorType<void | ParkingReportRateLimitError>
     export type CreateParkingReportMutationVariables = {garageId: string;data: BodyType<ParkingReportInput>}
 
     /**
  * @summary Submit a parking report
  */
-export const useCreateParkingReport = <TError = ErrorType<void>,
+export const useCreateParkingReport = <TError = ErrorType<void | ParkingReportRateLimitError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createParkingReport>>, TError,CreateParkingReportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createParkingReport>>,

@@ -128,7 +128,7 @@ paths:
       operationId: createParkingReport
       tags: [parking]
       summary: Submit a parking report
-      description: Saves a student parking report for a garage.
+      description: Saves a student parking report for a garage. A student may report the same garage once every five minutes.
       parameters:
         - name: garageId
           in: path
@@ -152,6 +152,17 @@ paths:
           description: Invalid report
         "404":
           description: Garage not found
+        "429":
+          description: The student has reported this garage too recently
+          headers:
+            Retry-After:
+              description: Seconds until another report may be submitted
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingReportRateLimitError"
   /campus/summary:
     get:
       operationId: getCampusSummary
@@ -276,6 +287,21 @@ components:
       required:
         - userId
         - availabilityStatus
+    ParkingReportRateLimitError:
+      type: object
+      properties:
+        error:
+          type: string
+        retryAfterSeconds:
+          type: integer
+          minimum: 1
+        nextAllowedAt:
+          type: string
+          format: date-time
+      required:
+        - error
+        - retryAfterSeconds
+        - nextAllowedAt
     CampusSummary:
       type: object
       properties:

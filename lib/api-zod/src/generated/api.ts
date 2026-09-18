@@ -138,7 +138,7 @@ export const ListParkingReportsResponse = zod.array(ListParkingReportsResponseIt
 
 
 /**
- * Saves a student parking report for a garage.
+ * Saves a student parking report for a garage. A student may report the same garage once every five minutes.
  * @summary Submit a parking report
  */
 export const CreateParkingReportParams = zod.object({

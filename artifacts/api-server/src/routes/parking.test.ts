@@ -88,6 +88,60 @@ describe("parking report routes", () => {
     expect(after).toHaveLength(before.length);
   });
 
+  it("limits repeated reports from the same student for the same garage", async () => {
+    const userId = `rate-limited-${randomUUID()}`;
+    await request(app)
+      .post(`/api/garages/${garageId}/reports`)
+      .send({ userId, availabilityStatus: "plenty_spots" })
+      .expect(201);
+
+    const response = await request(app)
+      .post(`/api/garages/${garageId}/reports`)
+      .send({ userId, availabilityStatus: "full" })
+      .expect(429);
+
+    expect(response.headers["retry-after"]).toMatch(/^\d+$/);
+    expect(response.body).toMatchObject({
+      error: expect.stringContaining("report again in"),
+      retryAfterSeconds: expect.any(Number),
+      nextAllowedAt: expect.any(String),
+    });
+    expect(response.body.retryAfterSeconds).toBeGreaterThan(0);
+    expect(Date.parse(response.body.nextAllowedAt)).toBeGreaterThan(Date.now());
+  });
+
+  it("allows the same student to report again after the cooldown", async () => {
+    const userId = `cooled-down-${randomUUID()}`;
+    await db.insert(parkingReportsTable).values({
+      userId,
+      garageId,
+      availabilityStatus: "filling_up",
+      createdAt: new Date(Date.now() - 6 * 60 * 1_000),
+    });
+
+    await request(app)
+      .post(`/api/garages/${garageId}/reports`)
+      .send({ userId, availabilityStatus: "almost_full" })
+      .expect(201);
+  });
+
+  it("accepts only one of two simultaneous reports from the same student", async () => {
+    const userId = `concurrent-${randomUUID()}`;
+    const submit = (availabilityStatus: "plenty_spots" | "full") =>
+      request(app)
+        .post(`/api/garages/${garageId}/reports`)
+        .send({ userId, availabilityStatus });
+
+    const responses = await Promise.all([
+      submit("plenty_spots"),
+      submit("full"),
+    ]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([
+      201, 429,
+    ]);
+  });
+
   it("returns 404 when creating a report for a missing garage", async () => {
     await request(app)
       .post(`/api/garages/missing-${randomUUID()}/reports`)

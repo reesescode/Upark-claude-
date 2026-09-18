@@ -18,3 +18,4 @@ export * from './parkingReport';
 export * from './parkingReportAvailabilityStatus';
 export * from './parkingReportInput';
 export * from './parkingReportInputAvailabilityStatus';
+export * from './parkingReportRateLimitError';
