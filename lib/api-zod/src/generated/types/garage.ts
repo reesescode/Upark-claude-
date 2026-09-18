@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { GarageAvailabilityConfidence } from './garageAvailabilityConfidence';
+import type { GarageAvailabilitySource } from './garageAvailabilitySource';
 import type { GarageStatus } from './garageStatus';
 import type { GarageType } from './garageType';
 
@@ -27,4 +29,10 @@ export interface Garage {
   latitude: number;
   longitude: number;
   updatedAt: string;
+  availabilitySource: GarageAvailabilitySource;
+  availabilityConfidence: GarageAvailabilityConfidence;
+  availabilityIsStale: boolean;
+  availabilityReportCount: number;
+  /** @nullable */
+  availabilityUpdatedAt: string | null;
 }

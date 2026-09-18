@@ -11,4 +11,7 @@ export interface CampusSummary {
   totalSpots: number;
   garagesCount: number;
   lastUpdatedAt: string;
+  liveGaragesCount: number;
+  staleGaragesCount: number;
+  demoGaragesCount: number;
 }

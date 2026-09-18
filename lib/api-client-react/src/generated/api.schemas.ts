@@ -26,6 +26,25 @@ export const GarageStatus = {
   nearly_full: 'nearly_full',
 } as const;
 
+export type GarageAvailabilitySource = typeof GarageAvailabilitySource[keyof typeof GarageAvailabilitySource];
+
+
+export const GarageAvailabilitySource = {
+  verified_reports: 'verified_reports',
+  live_update: 'live_update',
+  demo: 'demo',
+} as const;
+
+export type GarageAvailabilityConfidence = typeof GarageAvailabilityConfidence[keyof typeof GarageAvailabilityConfidence];
+
+
+export const GarageAvailabilityConfidence = {
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+  unavailable: 'unavailable',
+} as const;
+
 export interface Garage {
   id: string;
   name: string;
@@ -45,13 +64,12 @@ export interface Garage {
   latitude: number;
   longitude: number;
   updatedAt: string;
-}
-
-export interface AvailabilityUpdate {
-  /** @minimum 0 */
-  availableSpots: number;
-  /** @minimum 1 */
-  totalSpots: number;
+  availabilitySource: GarageAvailabilitySource;
+  availabilityConfidence: GarageAvailabilityConfidence;
+  availabilityIsStale: boolean;
+  availabilityReportCount: number;
+  /** @nullable */
+  availabilityUpdatedAt: string | null;
 }
 
 export type ParkingReportAvailabilityStatus = typeof ParkingReportAvailabilityStatus[keyof typeof ParkingReportAvailabilityStatus];
@@ -69,6 +87,7 @@ export interface ParkingReport {
   garageId: string;
   availabilityStatus: ParkingReportAvailabilityStatus;
   createdAt: string;
+  isVerified: boolean;
 }
 
 export type ParkingReportInputAvailabilityStatus = typeof ParkingReportInputAvailabilityStatus[keyof typeof ParkingReportInputAvailabilityStatus];
@@ -99,6 +118,9 @@ export interface CampusSummary {
   totalSpots: number;
   garagesCount: number;
   lastUpdatedAt: string;
+  liveGaragesCount: number;
+  staleGaragesCount: number;
+  demoGaragesCount: number;
 }
 
 export type ListGaragesParams = {

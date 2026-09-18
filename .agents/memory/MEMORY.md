@@ -1,2 +1,3 @@
 - [Playwright on Replit Nix](playwright-nix.md) — local Playwright validation needs Chromium downloaded and its shared-library runtime declared.
 - [Workspace package installs](workspace-package-installs.md) — the package helper cannot target a pnpm workspace package with filters; update the package manifest, then sync once.
+- [Parking availability trust](parking-availability-trust.md) — never treat a client-provided student ID as verification or let unverified reports drive live estimates.

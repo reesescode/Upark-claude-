@@ -46,7 +46,12 @@ export const ListGaragesResponseItem = zod.object({
   "permits": zod.array(zod.string()),
   "latitude": zod.number(),
   "longitude": zod.number(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "availabilitySource": zod.enum(['verified_reports', 'live_update', 'demo']),
+  "availabilityConfidence": zod.enum(['high', 'medium', 'low', 'unavailable']),
+  "availabilityIsStale": zod.boolean(),
+  "availabilityReportCount": zod.number().int(),
+  "availabilityUpdatedAt": zod.string().nullable()
 })
 export const ListGaragesResponse = zod.array(ListGaragesResponseItem)
 
@@ -76,47 +81,12 @@ export const GetGarageResponse = zod.object({
   "permits": zod.array(zod.string()),
   "latitude": zod.number(),
   "longitude": zod.number(),
-  "updatedAt": zod.string()
-})
-
-
-/**
- * Backend-ready endpoint for future university parking data feeds.
- * @summary Update a garage availability snapshot
- */
-export const UpdateGarageAvailabilityParams = zod.object({
-  "garageId": zod.coerce.string()
-})
-
-export const updateGarageAvailabilityBodyAvailableSpotsMin = 0;
-
-
-
-
-export const UpdateGarageAvailabilityBody = zod.object({
-  "availableSpots": zod.number().int().min(updateGarageAvailabilityBodyAvailableSpotsMin),
-  "totalSpots": zod.number().int().min(1)
-})
-
-export const UpdateGarageAvailabilityResponse = zod.object({
-  "id": zod.string(),
-  "name": zod.string(),
-  "shortName": zod.string(),
-  "address": zod.string(),
-  "type": zod.enum(['garage', 'lot']),
-  "availableSpots": zod.number().int(),
-  "totalSpots": zod.number().int(),
-  "occupancyPercent": zod.number().int(),
-  "distanceMiles": zod.number(),
-  "driveTimeMinutes": zod.number().int(),
-  "walkingTimeMinutes": zod.number().int(),
-  "status": zod.enum(['open', 'filling_up', 'nearly_full']),
-  "openHours": zod.string(),
-  "price": zod.string(),
-  "permits": zod.array(zod.string()),
-  "latitude": zod.number(),
-  "longitude": zod.number(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "availabilitySource": zod.enum(['verified_reports', 'live_update', 'demo']),
+  "availabilityConfidence": zod.enum(['high', 'medium', 'low', 'unavailable']),
+  "availabilityIsStale": zod.boolean(),
+  "availabilityReportCount": zod.number().int(),
+  "availabilityUpdatedAt": zod.string().nullable()
 })
 
 
@@ -132,7 +102,8 @@ export const ListParkingReportsResponseItem = zod.object({
   "id": zod.number().int(),
   "garageId": zod.string(),
   "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full']),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "isVerified": zod.boolean()
 })
 export const ListParkingReportsResponse = zod.array(ListParkingReportsResponseItem)
 
@@ -157,7 +128,8 @@ export const CreateParkingReportResponse = zod.object({
   "id": zod.number().int(),
   "garageId": zod.string(),
   "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full']),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "isVerified": zod.boolean()
 })
 
 
@@ -168,7 +140,10 @@ export const GetCampusSummaryResponse = zod.object({
   "openSpots": zod.number().int(),
   "totalSpots": zod.number().int(),
   "garagesCount": zod.number().int(),
-  "lastUpdatedAt": zod.string()
+  "lastUpdatedAt": zod.string(),
+  "liveGaragesCount": zod.number().int(),
+  "staleGaragesCount": zod.number().int(),
+  "demoGaragesCount": zod.number().int()
 })
 
 

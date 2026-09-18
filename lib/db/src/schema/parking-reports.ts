@@ -1,4 +1,5 @@
 import {
+  boolean,
   pgEnum,
   index,
   pgTable,
@@ -26,6 +27,7 @@ export const parkingReportsTable = pgTable(
     availabilityStatus: parkingAvailabilityStatusEnum(
       "availability_status",
     ).notNull(),
+    isVerified: boolean("is_verified").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

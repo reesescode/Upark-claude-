@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { getStatusColor, getStatusText, formatDistance, getStatusColorSolid } from "@/lib/garage-utils";
 import { useFavorites } from "@/hooks/use-local-data";
 import { cn } from "@/lib/utils";
+import { getAvailabilityLabel } from "@/lib/availability-utils";
 
 interface GarageCardProps {
   garage: Garage;
@@ -77,6 +78,18 @@ export function GarageCard({ garage, showDistance = true }: GarageCardProps) {
             <ChevronRight size={18} strokeWidth={3} />
           </div>
         </div>
+        <p
+          className={cn(
+            "mt-3 border-t border-gray-100 pt-3 text-xs font-semibold",
+            garage.availabilitySource === "demo"
+              ? "text-gray-500"
+              : garage.availabilityIsStale
+                ? "text-amber-700"
+                : "text-green-700",
+          )}
+        >
+          {getAvailabilityLabel(garage)}
+        </p>
       </div>
     </Link>
   );

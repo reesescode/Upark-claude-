@@ -74,33 +74,6 @@ paths:
                 $ref: "#/components/schemas/Garage"
         "404":
           description: Garage not found
-  /garages/{garageId}/availability:
-    patch:
-      operationId: updateGarageAvailability
-      tags: [parking]
-      summary: Update a garage availability snapshot
-      description: Backend-ready endpoint for future university parking data feeds.
-      parameters:
-        - name: garageId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AvailabilityUpdate"
-      responses:
-        "200":
-          description: Updated garage
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Garage"
-        "404":
-          description: Garage not found
   /garages/{garageId}/reports:
     get:
       operationId: listParkingReports
@@ -227,6 +200,18 @@ components:
           type: number
         updatedAt:
           type: string
+        availabilitySource:
+          type: string
+          enum: [verified_reports, live_update, demo]
+        availabilityConfidence:
+          type: string
+          enum: [high, medium, low, unavailable]
+        availabilityIsStale:
+          type: boolean
+        availabilityReportCount:
+          type: integer
+        availabilityUpdatedAt:
+          type: ["string", "null"]
       required:
         - id
         - name
@@ -246,18 +231,11 @@ components:
         - latitude
         - longitude
         - updatedAt
-    AvailabilityUpdate:
-      type: object
-      properties:
-        availableSpots:
-          type: integer
-          minimum: 0
-        totalSpots:
-          type: integer
-          minimum: 1
-      required:
-        - availableSpots
-        - totalSpots
+        - availabilitySource
+        - availabilityConfidence
+        - availabilityIsStale
+        - availabilityReportCount
+        - availabilityUpdatedAt
     ParkingReport:
       type: object
       properties:
@@ -270,11 +248,14 @@ components:
           enum: [plenty_spots, filling_up, almost_full, full]
         createdAt:
           type: string
+        isVerified:
+          type: boolean
       required:
         - id
         - garageId
         - availabilityStatus
         - createdAt
+        - isVerified
     ParkingReportInput:
       type: object
       properties:
@@ -313,9 +294,18 @@ components:
           type: integer
         lastUpdatedAt:
           type: string
+        liveGaragesCount:
+          type: integer
+        staleGaragesCount:
+          type: integer
+        demoGaragesCount:
+          type: integer
       required:
         - openSpots
         - totalSpots
         - garagesCount
         - lastUpdatedAt
+        - liveGaragesCount
+        - staleGaragesCount
+        - demoGaragesCount
 

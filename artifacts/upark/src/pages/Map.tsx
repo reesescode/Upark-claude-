@@ -19,6 +19,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { getAvailabilityLabel } from "@/lib/availability-utils";
 
 const CAMPUS_CENTER: [number, number] = [26.462647, -81.779026];
 
@@ -389,7 +390,7 @@ export default function CampusMap() {
 
               <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-medium text-gray-400 bg-gray-50/50 py-2 rounded-lg border border-gray-100/50">
                 <Info size={12} />
-                <span>Demo availability data for showcase.</span>
+                <span>{getAvailabilityLabel(selectedGarage)}</span>
               </div>
             </div>
           ) : (
@@ -410,7 +411,9 @@ export default function CampusMap() {
                     )}
                   </p>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                    Demo availability
+                    {summary?.liveGaragesCount
+                      ? `${summary.liveGaragesCount} live · ${summary.demoGaragesCount} awaiting live data`
+                      : "Demo fallback · no verified live data"}
                   </p>
                 </div>
               </div>

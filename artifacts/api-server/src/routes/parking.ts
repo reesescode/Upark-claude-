@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
 import {
   db,
   garagesTable,
@@ -18,17 +18,120 @@ import {
   ListParkingReportsResponse,
   ListGaragesQueryParams,
   ListGaragesResponse,
-  UpdateGarageAvailabilityBody,
-  UpdateGarageAvailabilityParams,
-  UpdateGarageAvailabilityResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 const REPORT_COOLDOWN_MS = 5 * 60 * 1_000;
+const LIVE_WINDOW_MS = 2 * 60 * 60 * 1_000;
+const STALE_AFTER_MS = 30 * 60 * 1_000;
 
-function toGarage(record: GarageRecord) {
+type AvailabilityReport = Pick<
+  ParkingReportRecord,
+  "garageId" | "userId" | "availabilityStatus" | "createdAt"
+>;
+
+const availabilityRatios: Record<
+  ParkingReportRecord["availabilityStatus"],
+  number
+> = {
+  plenty_spots: 0.5,
+  filling_up: 0.25,
+  almost_full: 0.08,
+  full: 0,
+};
+
+function estimateGarageAvailability(
+  record: GarageRecord,
+  reports: AvailabilityReport[],
+  now = new Date(),
+) {
+  const cutoff = now.getTime() - LIVE_WINDOW_MS;
+  const latestByStudent = new Map<string, AvailabilityReport>();
+  for (const report of reports) {
+    if (report.createdAt.getTime() < cutoff) continue;
+    const current = latestByStudent.get(report.userId);
+    if (!current || report.createdAt > current.createdAt) {
+      latestByStudent.set(report.userId, report);
+    }
+  }
+
+  const verifiedReports = [...latestByStudent.values()];
+  const newestReportAt =
+    verifiedReports.length > 0
+      ? new Date(
+          Math.max(...verifiedReports.map((report) => report.createdAt.getTime())),
+        )
+      : null;
+  const directUpdateIsLive =
+    record.availabilityUpdatedAt !== null &&
+    record.availabilityUpdatedAt.getTime() >= cutoff;
+  const useDirectUpdate =
+    directUpdateIsLive &&
+    (!newestReportAt ||
+      record.availabilityUpdatedAt!.getTime() >= newestReportAt.getTime());
+
+  if (useDirectUpdate) {
+    return {
+      availableSpots: record.availableSpots,
+      availabilitySource: "live_update" as const,
+      availabilityConfidence: "high" as const,
+      availabilityIsStale:
+        now.getTime() - record.availabilityUpdatedAt!.getTime() >
+        STALE_AFTER_MS,
+      availabilityReportCount: 0,
+      availabilityUpdatedAt: record.availabilityUpdatedAt,
+    };
+  }
+
+  if (verifiedReports.length > 0 && newestReportAt) {
+    const weightedRatio =
+      verifiedReports.reduce((total, report) => {
+        const ageMs = now.getTime() - report.createdAt.getTime();
+        const recencyWeight = Math.max(0.25, 1 - ageMs / LIVE_WINDOW_MS);
+        return (
+          total + availabilityRatios[report.availabilityStatus] * recencyWeight
+        );
+      }, 0) /
+      verifiedReports.reduce((total, report) => {
+        const ageMs = now.getTime() - report.createdAt.getTime();
+        return total + Math.max(0.25, 1 - ageMs / LIVE_WINDOW_MS);
+      }, 0);
+
+    return {
+      availableSpots: Math.round(record.totalSpots * weightedRatio),
+      availabilitySource: "verified_reports" as const,
+      availabilityConfidence:
+        verifiedReports.length >= 3
+          ? ("high" as const)
+          : verifiedReports.length === 2
+            ? ("medium" as const)
+            : ("low" as const),
+      availabilityIsStale:
+        now.getTime() - newestReportAt.getTime() > STALE_AFTER_MS,
+      availabilityReportCount: verifiedReports.length,
+      availabilityUpdatedAt: newestReportAt,
+    };
+  }
+
+  return {
+    availableSpots: record.availableSpots,
+    availabilitySource: "demo" as const,
+    availabilityConfidence: "unavailable" as const,
+    availabilityIsStale: false,
+    availabilityReportCount: 0,
+    availabilityUpdatedAt: null,
+  };
+}
+
+function toGarage(
+  record: GarageRecord,
+  reports: AvailabilityReport[] = [],
+  now = new Date(),
+) {
+  const availability = estimateGarageAvailability(record, reports, now);
   const occupancyPercent = Math.round(
-    ((record.totalSpots - record.availableSpots) / record.totalSpots) * 100,
+    ((record.totalSpots - availability.availableSpots) / record.totalSpots) *
+      100,
   );
   const status =
     occupancyPercent >= 90
@@ -39,18 +142,51 @@ function toGarage(record: GarageRecord) {
 
   return {
     ...record,
+    ...availability,
     type: record.type === "lot" ? ("lot" as const) : ("garage" as const),
     occupancyPercent,
     status,
     updatedAt: record.updatedAt.toISOString(),
+    availabilityUpdatedAt:
+      availability.availabilityUpdatedAt?.toISOString() ?? null,
   };
 }
 
 function toParkingReport(record: ParkingReportRecord) {
   return {
     ...record,
+    isVerified: record.isVerified,
     createdAt: record.createdAt.toISOString(),
   };
+}
+
+async function getGaragesWithAvailability(where?: ReturnType<typeof or>) {
+  const records = await db.select().from(garagesTable).where(where);
+  const liveCutoff = new Date(Date.now() - LIVE_WINDOW_MS);
+  const reports = await db
+    .select({
+      garageId: parkingReportsTable.garageId,
+      userId: parkingReportsTable.userId,
+      availabilityStatus: parkingReportsTable.availabilityStatus,
+      createdAt: parkingReportsTable.createdAt,
+    })
+    .from(parkingReportsTable)
+    .where(
+      and(
+        eq(parkingReportsTable.isVerified, true),
+        gte(parkingReportsTable.createdAt, liveCutoff),
+      ),
+    );
+  const reportsByGarage = new Map<string, AvailabilityReport[]>();
+  for (const report of reports) {
+    const garageReports = reportsByGarage.get(report.garageId) ?? [];
+    garageReports.push(report);
+    reportsByGarage.set(report.garageId, garageReports);
+  }
+  const now = new Date();
+  return records.map((record) =>
+    toGarage(record, reportsByGarage.get(record.id), now),
+  );
 }
 
 router.get("/garages", async (req, res): Promise<void> => {
@@ -68,16 +204,15 @@ router.get("/garages", async (req, res): Promise<void> => {
       )
     : undefined;
 
-  const occupancy = sql<number>`((${garagesTable.totalSpots} - ${garagesTable.availableSpots})::float / ${garagesTable.totalSpots})`;
-  const order =
+  const garages = await getGaragesWithAvailability(where);
+  garages.sort((a, b) =>
     query.data.sort === "most_available"
-      ? desc(garagesTable.availableSpots)
+      ? b.availableSpots - a.availableSpots
       : query.data.sort === "least_full"
-        ? asc(occupancy)
-        : asc(garagesTable.distanceMiles);
-
-  const records = await db.select().from(garagesTable).where(where).orderBy(order);
-  res.json(ListGaragesResponse.parse(records.map(toGarage)));
+        ? a.occupancyPercent - b.occupancyPercent
+        : a.distanceMiles - b.distanceMiles,
+  );
+  res.json(ListGaragesResponse.parse(garages));
 });
 
 router.get("/garages/:garageId", async (req, res): Promise<void> => {
@@ -96,44 +231,24 @@ router.get("/garages/:garageId", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Garage not found" });
     return;
   }
-  res.json(GetGarageResponse.parse(toGarage(record)));
+  const liveCutoff = new Date(Date.now() - LIVE_WINDOW_MS);
+  const reports = await db
+    .select({
+      garageId: parkingReportsTable.garageId,
+      userId: parkingReportsTable.userId,
+      availabilityStatus: parkingReportsTable.availabilityStatus,
+      createdAt: parkingReportsTable.createdAt,
+    })
+    .from(parkingReportsTable)
+    .where(
+      and(
+        eq(parkingReportsTable.garageId, record.id),
+        eq(parkingReportsTable.isVerified, true),
+        gte(parkingReportsTable.createdAt, liveCutoff),
+      ),
+    );
+  res.json(GetGarageResponse.parse(toGarage(record, reports)));
 });
-
-router.patch(
-  "/garages/:garageId/availability",
-  async (req, res): Promise<void> => {
-    const params = UpdateGarageAvailabilityParams.safeParse(req.params);
-    const body = UpdateGarageAvailabilityBody.safeParse(req.body);
-    if (!params.success) {
-      res.status(400).json({ error: params.error.message });
-      return;
-    }
-    if (!body.success) {
-      res.status(400).json({ error: body.error.message });
-      return;
-    }
-    if (body.data.availableSpots > body.data.totalSpots) {
-      res.status(400).json({ error: "Available spots cannot exceed capacity" });
-      return;
-    }
-
-    const [record] = await db
-      .update(garagesTable)
-      .set({
-        availableSpots: body.data.availableSpots,
-        totalSpots: body.data.totalSpots,
-        updatedAt: new Date(),
-      })
-      .where(eq(garagesTable.id, params.data.garageId))
-      .returning();
-
-    if (!record) {
-      res.status(404).json({ error: "Garage not found" });
-      return;
-    }
-    res.json(UpdateGarageAvailabilityResponse.parse(toGarage(record)));
-  },
-);
 
 router.get("/garages/:garageId/reports", async (req, res): Promise<void> => {
   const params = ListParkingReportsParams.safeParse(req.params);
@@ -250,16 +365,36 @@ router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
 });
 
 router.get("/campus/summary", async (_req, res): Promise<void> => {
-  const [summary] = await db
-    .select({
-      openSpots: sql<number>`coalesce(sum(${garagesTable.availableSpots}), 0)::int`,
-      totalSpots: sql<number>`coalesce(sum(${garagesTable.totalSpots}), 0)::int`,
-      garagesCount: sql<number>`count(*)::int`,
-      lastUpdatedAt: sql<string>`coalesce(max(${garagesTable.updatedAt}), now())::text`,
-    })
-    .from(garagesTable);
-
-  res.json(GetCampusSummaryResponse.parse(summary));
+  const garages = await getGaragesWithAvailability();
+  const liveGarages = garages.filter(
+    (garage) => garage.availabilitySource !== "demo",
+  );
+  const latestLiveUpdate = liveGarages
+    .map((garage) => garage.availabilityUpdatedAt)
+    .filter((date): date is string => date !== null)
+    .sort()
+    .at(-1);
+  res.json(
+    GetCampusSummaryResponse.parse({
+      openSpots: garages.reduce(
+        (total, garage) => total + garage.availableSpots,
+        0,
+      ),
+      totalSpots: garages.reduce(
+        (total, garage) => total + garage.totalSpots,
+        0,
+      ),
+      garagesCount: garages.length,
+      lastUpdatedAt: latestLiveUpdate ?? new Date().toISOString(),
+      liveGaragesCount: liveGarages.length,
+      staleGaragesCount: liveGarages.filter(
+        (garage) => garage.availabilityIsStale,
+      ).length,
+      demoGaragesCount: garages.filter(
+        (garage) => garage.availabilitySource === "demo",
+      ).length,
+    }),
+  );
 });
 
 export default router;

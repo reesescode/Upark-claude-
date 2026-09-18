@@ -12,4 +12,5 @@ export interface ParkingReport {
   garageId: string;
   availabilityStatus: ParkingReportAvailabilityStatus;
   createdAt: string;
+  isVerified: boolean;
 }

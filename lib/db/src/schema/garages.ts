@@ -15,6 +15,9 @@ export const garagesTable = pgTable("garages", {
   address: text("address").notNull(),
   type: text("type").notNull(),
   availableSpots: integer("available_spots").notNull(),
+  availabilityUpdatedAt: timestamp("availability_updated_at", {
+    withTimezone: true,
+  }),
   totalSpots: integer("total_spots").notNull(),
   distanceMiles: doublePrecision("distance_miles").notNull(),
   driveTimeMinutes: integer("drive_time_minutes").notNull(),

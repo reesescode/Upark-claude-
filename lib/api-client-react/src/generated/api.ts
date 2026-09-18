@@ -20,7 +20,6 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  AvailabilityUpdate,
   CampusSummary,
   Garage,
   HealthStatus,
@@ -296,96 +295,6 @@ export function useGetGarage<TData = Awaited<ReturnType<typeof getGarage>>, TErr
 
 
 
-
-export const getUpdateGarageAvailabilityUrl = (garageId: string,) => {
-
-
-
-
-  return `/api/garages/${garageId}/availability`
-}
-
-/**
- * Backend-ready endpoint for future university parking data feeds.
- * @summary Update a garage availability snapshot
- */
-export const updateGarageAvailability = async (garageId: string,
-    availabilityUpdate: AvailabilityUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Garage> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<Garage>(getUpdateGarageAvailabilityUrl(garageId),
-  {
-    ...options,
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(availabilityUpdate)
-  }
-);}
-
-
-
-
-
-export const getUpdateGarageAvailabilityMutationKey = () => ['updateGarageAvailability'] as const;
-
-export const getUpdateGarageAvailabilityMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateGarageAvailability>>, TError,UpdateGarageAvailabilityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateGarageAvailability>>, TError,UpdateGarageAvailabilityMutationVariables, TContext> => {
-
-const mutationKey = getUpdateGarageAvailabilityMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateGarageAvailability>>, UpdateGarageAvailabilityMutationVariables> = (props) => {
-          const {garageId,data} = props ?? {};
-
-          return  updateGarageAvailability(garageId,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UpdateGarageAvailabilityMutationResult = NonNullable<Awaited<ReturnType<typeof updateGarageAvailability>>>
-    export type UpdateGarageAvailabilityMutationBody = BodyType<AvailabilityUpdate>
-    export type UpdateGarageAvailabilityMutationError = ErrorType<void>
-    export type UpdateGarageAvailabilityMutationVariables = {garageId: string;data: BodyType<AvailabilityUpdate>}
-
-    /**
- * @summary Update a garage availability snapshot
- */
-export const useUpdateGarageAvailability = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateGarageAvailability>>, TError,UpdateGarageAvailabilityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof updateGarageAvailability>>,
-        TError,
-        UpdateGarageAvailabilityMutationVariables,
-        TContext
-      > => {
-      return useMutation(getUpdateGarageAvailabilityMutationOptions(options));
-    }
 
 export const getListParkingReportsUrl = (garageId: string,) => {
 

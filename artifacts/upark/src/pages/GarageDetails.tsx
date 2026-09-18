@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import {
   useGetGarage,
-  useUpdateGarageAvailability,
   getGetGarageQueryKey,
+  getListGaragesQueryKey,
+  getGetCampusSummaryQueryKey,
   useListParkingReports,
   useCreateParkingReport,
   getListParkingReportsQueryKey,
@@ -22,10 +23,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ChevronLeft, Navigation, Heart, Clock, DollarSign, Info, MapPin, Map as MapIcon, Footprints, AlertTriangle, MessageSquarePlus, CheckCircle2, Loader2 } from "lucide-react";
+import { ChevronLeft, Navigation, Heart, Clock, DollarSign, Info, MapPin, Map as MapIcon, Footprints, MessageSquarePlus, CheckCircle2, Loader2 } from "lucide-react";
 import { getStatusColor, getStatusText, getStatusColorSolid } from "@/lib/garage-utils";
 import { useFavorites, useUser } from "@/hooks/use-local-data";
 import { cn } from "@/lib/utils";
+import { getAvailabilityLabel } from "@/lib/availability-utils";
 
 const reportOptions: Array<{
   value: ParkingReportInputAvailabilityStatus;
@@ -87,7 +89,6 @@ export default function GarageDetails() {
     isLoading: reportsLoading,
     isError: reportsError,
   } = useListParkingReports(id!);
-  const updateAvailability = useUpdateGarageAvailability();
   const createReport = useCreateParkingReport();
   const [reportOpen, setReportOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] =
@@ -98,22 +99,6 @@ export default function GarageDetails() {
   const [, setLocation] = useLocation();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { user } = useUser();
-
-  const handleReportFull = () => {
-    if (!garage) return;
-    updateAvailability.mutate({
-      garageId: garage.id,
-      data: {
-        availableSpots: Math.max(0, garage.availableSpots - 10), // dummy update
-        totalSpots: garage.totalSpots
-      }
-    }, {
-      onSuccess: (updatedGarage) => {
-        // Optimistic UI update patch without triggering waterfall refetch
-        queryClient.setQueryData(getGetGarageQueryKey(garage.id), updatedGarage);
-      }
-    });
-  };
 
   const handleSubmitReport = (event: React.FormEvent) => {
     event.preventDefault();
@@ -143,6 +128,15 @@ export default function GarageDetails() {
             getListParkingReportsQueryKey(id!),
             (current = []) => [newReport, ...current].slice(0, 20),
           );
+          queryClient.invalidateQueries({
+            queryKey: getGetGarageQueryKey(id!),
+          });
+          queryClient.invalidateQueries({
+            queryKey: getListGaragesQueryKey(),
+          });
+          queryClient.invalidateQueries({
+            queryKey: getGetCampusSummaryQueryKey(),
+          });
           setReportSuccess(true);
           setReportOpen(false);
           setSelectedStatus(null);
@@ -254,15 +248,18 @@ export default function GarageDetails() {
               style={{ width: `${Math.min(garage.occupancyPercent, 100)}%` }}
             />
           </div>
-
-          <button 
-            onClick={handleReportFull}
-            disabled={updateAvailability.isPending}
-            className="absolute top-4 right-4 text-xs font-bold flex items-center gap-1 text-gray-400 hover:text-gray-600 active:scale-95"
+          <p
+            className={cn(
+              "mt-4 rounded-xl px-3 py-2 text-xs font-semibold",
+              garage.availabilitySource === "demo"
+                ? "bg-gray-100 text-gray-600"
+                : garage.availabilityIsStale
+                  ? "bg-amber-50 text-amber-800"
+                  : "bg-green-50 text-green-800",
+            )}
           >
-            <AlertTriangle size={14} />
-            Report Less Spots
-          </button>
+            {getAvailabilityLabel(garage)}
+          </p>
         </div>
 
         {reportSuccess && (

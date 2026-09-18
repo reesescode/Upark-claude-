@@ -6,9 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './availabilityUpdate';
 export * from './campusSummary';
 export * from './garage';
+export * from './garageAvailabilityConfidence';
+export * from './garageAvailabilitySource';
 export * from './garageStatus';
 export * from './garageType';
 export * from './healthStatus';
