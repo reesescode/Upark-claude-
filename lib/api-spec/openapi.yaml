@@ -148,7 +148,141 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CampusSummary"
+  /users/{userId}/profile:
+    get:
+      operationId: getUserProfile
+      tags: [profile]
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User profile data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileData"
+    put:
+      operationId: upsertUserProfile
+      tags: [profile]
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileInput"
+      responses:
+        "200":
+          description: Saved user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileData"
+    delete:
+      operationId: deleteUserAccount
+      tags: [profile]
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: Account data deleted
+  /users/{userId}/preferences:
+    put:
+      operationId: updateUserPreferences
+      tags: [profile]
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserPreferencesInput"
+      responses:
+        "200":
+          description: Saved preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPreferences"
+  /users/{userId}/notifications:
+    put:
+      operationId: updateNotificationSettings
+      tags: [profile]
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationSettingsInput"
+      responses:
+        "200":
+          description: Saved notification settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationSettings"
+  /users/{userId}/favorites:
+    put:
+      operationId: updateUserFavorites
+      tags: [profile]
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserFavoritesInput"
+      responses:
+        "200":
+          description: Saved favorite garage IDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /users/{userId}/parking-history:
+    delete:
+      operationId: clearUserParkingHistory
+      tags: [profile]
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: Parking history cleared
+  /users/{userId}/support-requests:
+    post:
+      operationId: createSupportRequest
+      tags: [profile]
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportRequestInput"
+      responses:
+        "201":
+          description: Support request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequest"
 components:
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
   schemas:
     HealthStatus:
       type: object
@@ -308,4 +442,126 @@ components:
         - liveGaragesCount
         - staleGaragesCount
         - demoGaragesCount
+    UserProfileInput:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+      required: [displayName]
+    UserPreferences:
+      type: object
+      properties:
+        defaultParkingPreference:
+          type: string
+          enum: [closest, most_available, lowest_occupancy]
+        defaultCampus:
+          type: string
+        distanceUnits:
+          type: string
+          enum: [miles, kilometers]
+        autoUseLocation:
+          type: boolean
+        favoriteGarageId:
+          type: ["string", "null"]
+        locationServices:
+          type: boolean
+        anonymousDataCollection:
+          type: boolean
+      required:
+        - defaultParkingPreference
+        - defaultCampus
+        - distanceUnits
+        - autoUseLocation
+        - favoriteGarageId
+        - locationServices
+        - anonymousDataCollection
+    UserPreferencesInput:
+      allOf:
+        - $ref: "#/components/schemas/UserPreferences"
+    NotificationSettings:
+      type: object
+      properties:
+        garageAlmostFullAlerts:
+          type: boolean
+        favoriteGarageAlerts:
+          type: boolean
+        parkingAvailabilityUpdates:
+          type: boolean
+        uparkAnnouncements:
+          type: boolean
+        notificationSound:
+          type: boolean
+      required:
+        - garageAlmostFullAlerts
+        - favoriteGarageAlerts
+        - parkingAvailabilityUpdates
+        - uparkAnnouncements
+        - notificationSound
+    NotificationSettingsInput:
+      allOf:
+        - $ref: "#/components/schemas/NotificationSettings"
+    UserFavoritesInput:
+      type: object
+      properties:
+        garageIds:
+          type: array
+          items:
+            type: string
+      required: [garageIds]
+    UserProfileData:
+      type: object
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+        preferences:
+          $ref: "#/components/schemas/UserPreferences"
+        notifications:
+          $ref: "#/components/schemas/NotificationSettings"
+        favoriteGarageIds:
+          type: array
+          items:
+            type: string
+        parkingReports:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParkingReport"
+      required:
+        - userId
+        - displayName
+        - preferences
+        - notifications
+        - favoriteGarageIds
+        - parkingReports
+    SupportRequestInput:
+      type: object
+      properties:
+        category:
+          type: string
+          minLength: 1
+          maxLength: 60
+        subject:
+          type: string
+          minLength: 3
+          maxLength: 160
+        message:
+          type: string
+          minLength: 10
+          maxLength: 4000
+      required: [category, subject, message]
+    SupportRequest:
+      allOf:
+        - $ref: "#/components/schemas/SupportRequestInput"
+        - type: object
+          properties:
+            id:
+              type: integer
+            status:
+              type: string
+            createdAt:
+              type: string
+          required: [id, status, createdAt]
 

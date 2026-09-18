@@ -1,27 +1,49 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useUser } from "@/hooks/use-local-data";
+import { useUpsertUserProfile } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MapPin } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const { user, login } = useUser();
   const [, setLocation] = useLocation();
+  const upsertProfile = useUpsertUserProfile();
+  const { toast } = useToast();
   const [name, setName] = useState("");
   const [studentId, setStudentId] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (user) setLocation("/map");
+  }, [setLocation, user]);
+
+  const completeLogin = async (displayName: string, userId: string) => {
+    try {
+      await upsertProfile.mutateAsync({
+        userId,
+        data: { displayName },
+      });
+      login(displayName, userId);
+      setLocation("/map");
+    } catch {
+      toast({
+        title: "Could not start your profile",
+        description: "Please check your connection and try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (name && studentId) {
-      login(name, studentId);
-      setLocation("/map");
+      await completeLogin(name.trim(), studentId.trim());
     }
   };
 
   if (user) {
-    // Redirect if already logged in
-    setLocation("/map");
     return null;
   }
 
@@ -71,17 +93,23 @@ export default function Home() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full h-14 text-lg rounded-2xl">
-            Get Started
+          <Button
+            type="submit"
+            className="w-full h-14 text-lg rounded-2xl"
+            disabled={upsertProfile.isPending}
+            data-testid="button-get-started"
+          >
+            {upsertProfile.isPending ? "Starting..." : "Get Started"}
           </Button>
 
           <div className="mt-4 text-center">
             <button 
               type="button"
               onClick={() => {
-                login("Demo User", "0000000");
-                setLocation("/map");
+                void completeLogin("Demo User", "0000000");
               }}
+              disabled={upsertProfile.isPending}
+              data-testid="button-demo-user"
               className="text-sm font-medium text-gray-400 hover:text-gray-600 transition-colors"
             >
               Skip as Demo User

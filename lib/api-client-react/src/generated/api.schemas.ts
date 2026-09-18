@@ -123,6 +123,91 @@ export interface CampusSummary {
   demoGaragesCount: number;
 }
 
+export interface UserProfileInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  displayName: string;
+}
+
+export type UserPreferencesDefaultParkingPreference = typeof UserPreferencesDefaultParkingPreference[keyof typeof UserPreferencesDefaultParkingPreference];
+
+
+export const UserPreferencesDefaultParkingPreference = {
+  closest: 'closest',
+  most_available: 'most_available',
+  lowest_occupancy: 'lowest_occupancy',
+} as const;
+
+export type UserPreferencesDistanceUnits = typeof UserPreferencesDistanceUnits[keyof typeof UserPreferencesDistanceUnits];
+
+
+export const UserPreferencesDistanceUnits = {
+  miles: 'miles',
+  kilometers: 'kilometers',
+} as const;
+
+export interface UserPreferences {
+  defaultParkingPreference: UserPreferencesDefaultParkingPreference;
+  defaultCampus: string;
+  distanceUnits: UserPreferencesDistanceUnits;
+  autoUseLocation: boolean;
+  /** @nullable */
+  favoriteGarageId: string | null;
+  locationServices: boolean;
+  anonymousDataCollection: boolean;
+}
+
+export type UserPreferencesInput = UserPreferences;
+
+export interface NotificationSettings {
+  garageAlmostFullAlerts: boolean;
+  favoriteGarageAlerts: boolean;
+  parkingAvailabilityUpdates: boolean;
+  uparkAnnouncements: boolean;
+  notificationSound: boolean;
+}
+
+export type NotificationSettingsInput = NotificationSettings;
+
+export interface UserFavoritesInput {
+  garageIds: string[];
+}
+
+export interface UserProfileData {
+  userId: string;
+  displayName: string;
+  preferences: UserPreferences;
+  notifications: NotificationSettings;
+  favoriteGarageIds: string[];
+  parkingReports: ParkingReport[];
+}
+
+export interface SupportRequestInput {
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  category: string;
+  /**
+     * @minLength 3
+     * @maxLength 160
+     */
+  subject: string;
+  /**
+     * @minLength 10
+     * @maxLength 4000
+     */
+  message: string;
+}
+
+export type SupportRequest = SupportRequestInput & {
+  id: number;
+  status: string;
+  createdAt: string;
+};
+
 export type ListGaragesParams = {
 search?: string;
 sort?: ListGaragesSort;

@@ -1,0 +1,293 @@
+import { Router, type IRouter } from "express";
+import { desc, eq, inArray } from "drizzle-orm";
+import {
+  db,
+  garagesTable,
+  notificationSettingsTable,
+  parkingReportsTable,
+  supportRequestsTable,
+  userFavoritesTable,
+  userPreferencesTable,
+  userProfilesTable,
+} from "@workspace/db";
+import {
+  ClearUserParkingHistoryParams,
+  CreateSupportRequestBody,
+  CreateSupportRequestParams,
+  CreateSupportRequestResponse,
+  DeleteUserAccountParams,
+  GetUserProfileParams,
+  GetUserProfileResponse,
+  UpdateNotificationSettingsBody,
+  UpdateNotificationSettingsParams,
+  UpdateNotificationSettingsResponse,
+  UpdateUserFavoritesBody,
+  UpdateUserFavoritesParams,
+  UpdateUserFavoritesResponse,
+  UpdateUserPreferencesBody,
+  UpdateUserPreferencesParams,
+  UpdateUserPreferencesResponse,
+  UpsertUserProfileBody,
+  UpsertUserProfileParams,
+  UpsertUserProfileResponse,
+} from "@workspace/api-zod";
+
+const router: IRouter = Router();
+
+async function ensureUser(userId: string, displayName = "Student") {
+  await db
+    .insert(userProfilesTable)
+    .values({ userId, displayName })
+    .onConflictDoNothing();
+  await Promise.all([
+    db
+      .insert(userPreferencesTable)
+      .values({ userId })
+      .onConflictDoNothing(),
+    db
+      .insert(notificationSettingsTable)
+      .values({ userId })
+      .onConflictDoNothing(),
+  ]);
+}
+
+function toPreferences(record: typeof userPreferencesTable.$inferSelect) {
+  return {
+    defaultParkingPreference:
+      record.defaultParkingPreference === "most_available" ||
+      record.defaultParkingPreference === "lowest_occupancy"
+        ? record.defaultParkingPreference
+        : ("closest" as const),
+    defaultCampus: record.defaultCampus,
+    distanceUnits:
+      record.distanceUnits === "kilometers"
+        ? ("kilometers" as const)
+        : ("miles" as const),
+    autoUseLocation: record.autoUseLocation,
+    favoriteGarageId: record.favoriteGarageId,
+    locationServices: record.locationServices,
+    anonymousDataCollection: record.anonymousDataCollection,
+  };
+}
+
+function toNotifications(record: typeof notificationSettingsTable.$inferSelect) {
+  return {
+    garageAlmostFullAlerts: record.garageAlmostFullAlerts,
+    favoriteGarageAlerts: record.favoriteGarageAlerts,
+    parkingAvailabilityUpdates: record.parkingAvailabilityUpdates,
+    uparkAnnouncements: record.uparkAnnouncements,
+    notificationSound: record.notificationSound,
+  };
+}
+
+function toParkingReport(record: typeof parkingReportsTable.$inferSelect) {
+  return {
+    id: record.id,
+    garageId: record.garageId,
+    availabilityStatus: record.availabilityStatus,
+    createdAt: record.createdAt.toISOString(),
+    isVerified: record.isVerified,
+  };
+}
+
+async function getProfileData(userId: string) {
+  const [[profile], [preferences], [notifications], favorites, reports] =
+    await Promise.all([
+      db
+        .select()
+        .from(userProfilesTable)
+        .where(eq(userProfilesTable.userId, userId)),
+      db
+        .select()
+        .from(userPreferencesTable)
+        .where(eq(userPreferencesTable.userId, userId)),
+      db
+        .select()
+        .from(notificationSettingsTable)
+        .where(eq(notificationSettingsTable.userId, userId)),
+      db
+        .select({ garageId: userFavoritesTable.garageId })
+        .from(userFavoritesTable)
+        .where(eq(userFavoritesTable.userId, userId)),
+      db
+        .select()
+        .from(parkingReportsTable)
+        .where(eq(parkingReportsTable.userId, userId))
+        .orderBy(desc(parkingReportsTable.createdAt))
+        .limit(100),
+    ]);
+
+  if (!profile || !preferences || !notifications) return null;
+  return {
+    userId: profile.userId,
+    displayName: profile.displayName,
+    preferences: toPreferences(preferences),
+    notifications: toNotifications(notifications),
+    favoriteGarageIds: favorites.map((favorite) => favorite.garageId),
+    parkingReports: reports.map(toParkingReport),
+  };
+}
+
+router.get("/users/:userId/profile", async (req, res): Promise<void> => {
+  const params = GetUserProfileParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const data = await getProfileData(params.data.userId);
+  if (!data) {
+    res.status(404).json({ error: "Profile not found" });
+    return;
+  }
+  res.json(GetUserProfileResponse.parse(data));
+});
+
+router.put("/users/:userId/profile", async (req, res): Promise<void> => {
+  const params = UpsertUserProfileParams.safeParse(req.params);
+  const body = UpsertUserProfileBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid profile" });
+    return;
+  }
+  await db
+    .insert(userProfilesTable)
+    .values({
+      userId: params.data.userId,
+      displayName: body.data.displayName.trim(),
+    })
+    .onConflictDoUpdate({
+      target: userProfilesTable.userId,
+      set: {
+        displayName: body.data.displayName.trim(),
+        updatedAt: new Date(),
+      },
+    });
+  await ensureUser(params.data.userId, body.data.displayName.trim());
+  const data = await getProfileData(params.data.userId);
+  res.json(UpsertUserProfileResponse.parse(data));
+});
+
+router.put("/users/:userId/preferences", async (req, res): Promise<void> => {
+  const params = UpdateUserPreferencesParams.safeParse(req.params);
+  const body = UpdateUserPreferencesBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid preferences" });
+    return;
+  }
+  await ensureUser(params.data.userId);
+  const [record] = await db
+    .insert(userPreferencesTable)
+    .values({ userId: params.data.userId, ...body.data })
+    .onConflictDoUpdate({
+      target: userPreferencesTable.userId,
+      set: { ...body.data, updatedAt: new Date() },
+    })
+    .returning();
+  res.json(UpdateUserPreferencesResponse.parse(toPreferences(record)));
+});
+
+router.put("/users/:userId/notifications", async (req, res): Promise<void> => {
+  const params = UpdateNotificationSettingsParams.safeParse(req.params);
+  const body = UpdateNotificationSettingsBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid notification settings" });
+    return;
+  }
+  await ensureUser(params.data.userId);
+  const [record] = await db
+    .insert(notificationSettingsTable)
+    .values({ userId: params.data.userId, ...body.data })
+    .onConflictDoUpdate({
+      target: notificationSettingsTable.userId,
+      set: { ...body.data, updatedAt: new Date() },
+    })
+    .returning();
+  res.json(UpdateNotificationSettingsResponse.parse(toNotifications(record)));
+});
+
+router.put("/users/:userId/favorites", async (req, res): Promise<void> => {
+  const params = UpdateUserFavoritesParams.safeParse(req.params);
+  const body = UpdateUserFavoritesBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid favorites" });
+    return;
+  }
+  await ensureUser(params.data.userId);
+  const uniqueIds = [...new Set(body.data.garageIds)];
+  if (uniqueIds.length) {
+    const valid = await db
+      .select({ id: garagesTable.id })
+      .from(garagesTable)
+      .where(inArray(garagesTable.id, uniqueIds));
+    if (valid.length !== uniqueIds.length) {
+      res.status(400).json({ error: "One or more parking locations are invalid" });
+      return;
+    }
+  }
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(userFavoritesTable)
+      .where(eq(userFavoritesTable.userId, params.data.userId));
+    if (uniqueIds.length) {
+      await tx
+        .insert(userFavoritesTable)
+        .values(uniqueIds.map((garageId) => ({ userId: params.data.userId, garageId })));
+    }
+  });
+  res.json(UpdateUserFavoritesResponse.parse(uniqueIds));
+});
+
+router.delete("/users/:userId/parking-history", async (req, res): Promise<void> => {
+  const params = ClearUserParkingHistoryParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  await db
+    .delete(parkingReportsTable)
+    .where(eq(parkingReportsTable.userId, params.data.userId));
+  res.status(204).end();
+});
+
+router.delete("/users/:userId/profile", async (req, res): Promise<void> => {
+  const params = DeleteUserAccountParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(parkingReportsTable)
+      .where(eq(parkingReportsTable.userId, params.data.userId));
+    await tx
+      .delete(userProfilesTable)
+      .where(eq(userProfilesTable.userId, params.data.userId));
+  });
+  res.status(204).end();
+});
+
+router.post("/users/:userId/support-requests", async (req, res): Promise<void> => {
+  const params = CreateSupportRequestParams.safeParse(req.params);
+  const body = CreateSupportRequestBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid support request" });
+    return;
+  }
+  await ensureUser(params.data.userId);
+  const [record] = await db
+    .insert(supportRequestsTable)
+    .values({ userId: params.data.userId, ...body.data })
+    .returning();
+  res.status(201).json(
+    CreateSupportRequestResponse.parse({
+      id: record.id,
+      category: record.category,
+      subject: record.subject,
+      message: record.message,
+      status: record.status,
+      createdAt: record.createdAt.toISOString(),
+    }),
+  );
+});
+
+export default router;

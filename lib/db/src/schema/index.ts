@@ -19,3 +19,4 @@
 
 export * from "./garages";
 export * from "./parking-reports";
+export * from "./user-profile";

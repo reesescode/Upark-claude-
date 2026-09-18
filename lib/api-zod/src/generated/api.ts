@@ -147,3 +147,216 @@ export const GetCampusSummaryResponse = zod.object({
 })
 
 
+
+
+
+export const GetUserProfileParams = zod.object({
+  "userId": zod.coerce.string().min(1)
+})
+
+export const GetUserProfileResponse = zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "preferences": zod.object({
+  "defaultParkingPreference": zod.enum(['closest', 'most_available', 'lowest_occupancy']),
+  "defaultCampus": zod.string(),
+  "distanceUnits": zod.enum(['miles', 'kilometers']),
+  "autoUseLocation": zod.boolean(),
+  "favoriteGarageId": zod.string().nullable(),
+  "locationServices": zod.boolean(),
+  "anonymousDataCollection": zod.boolean()
+}),
+  "notifications": zod.object({
+  "garageAlmostFullAlerts": zod.boolean(),
+  "favoriteGarageAlerts": zod.boolean(),
+  "parkingAvailabilityUpdates": zod.boolean(),
+  "uparkAnnouncements": zod.boolean(),
+  "notificationSound": zod.boolean()
+}),
+  "favoriteGarageIds": zod.array(zod.string()),
+  "parkingReports": zod.array(zod.object({
+  "id": zod.number().int(),
+  "garageId": zod.string(),
+  "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full']),
+  "createdAt": zod.string(),
+  "isVerified": zod.boolean()
+}))
+})
+
+
+
+
+
+export const UpsertUserProfileParams = zod.object({
+  "userId": zod.coerce.string().min(1)
+})
+
+export const upsertUserProfileBodyDisplayNameMax = 120;
+
+
+
+export const UpsertUserProfileBody = zod.object({
+  "displayName": zod.string().min(1).max(upsertUserProfileBodyDisplayNameMax)
+})
+
+export const UpsertUserProfileResponse = zod.object({
+  "userId": zod.string(),
+  "displayName": zod.string(),
+  "preferences": zod.object({
+  "defaultParkingPreference": zod.enum(['closest', 'most_available', 'lowest_occupancy']),
+  "defaultCampus": zod.string(),
+  "distanceUnits": zod.enum(['miles', 'kilometers']),
+  "autoUseLocation": zod.boolean(),
+  "favoriteGarageId": zod.string().nullable(),
+  "locationServices": zod.boolean(),
+  "anonymousDataCollection": zod.boolean()
+}),
+  "notifications": zod.object({
+  "garageAlmostFullAlerts": zod.boolean(),
+  "favoriteGarageAlerts": zod.boolean(),
+  "parkingAvailabilityUpdates": zod.boolean(),
+  "uparkAnnouncements": zod.boolean(),
+  "notificationSound": zod.boolean()
+}),
+  "favoriteGarageIds": zod.array(zod.string()),
+  "parkingReports": zod.array(zod.object({
+  "id": zod.number().int(),
+  "garageId": zod.string(),
+  "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full']),
+  "createdAt": zod.string(),
+  "isVerified": zod.boolean()
+}))
+})
+
+
+
+
+
+export const DeleteUserAccountParams = zod.object({
+  "userId": zod.coerce.string().min(1)
+})
+
+export const DeleteUserAccountResponse = zod.void()
+
+
+
+
+
+export const UpdateUserPreferencesParams = zod.object({
+  "userId": zod.coerce.string().min(1)
+})
+
+export const UpdateUserPreferencesBody = zod.object({
+  "defaultParkingPreference": zod.enum(['closest', 'most_available', 'lowest_occupancy']),
+  "defaultCampus": zod.string(),
+  "distanceUnits": zod.enum(['miles', 'kilometers']),
+  "autoUseLocation": zod.boolean(),
+  "favoriteGarageId": zod.string().nullable(),
+  "locationServices": zod.boolean(),
+  "anonymousDataCollection": zod.boolean()
+})
+
+export const UpdateUserPreferencesResponse = zod.object({
+  "defaultParkingPreference": zod.enum(['closest', 'most_available', 'lowest_occupancy']),
+  "defaultCampus": zod.string(),
+  "distanceUnits": zod.enum(['miles', 'kilometers']),
+  "autoUseLocation": zod.boolean(),
+  "favoriteGarageId": zod.string().nullable(),
+  "locationServices": zod.boolean(),
+  "anonymousDataCollection": zod.boolean()
+})
+
+
+
+
+
+export const UpdateNotificationSettingsParams = zod.object({
+  "userId": zod.coerce.string().min(1)
+})
+
+export const UpdateNotificationSettingsBody = zod.object({
+  "garageAlmostFullAlerts": zod.boolean(),
+  "favoriteGarageAlerts": zod.boolean(),
+  "parkingAvailabilityUpdates": zod.boolean(),
+  "uparkAnnouncements": zod.boolean(),
+  "notificationSound": zod.boolean()
+})
+
+export const UpdateNotificationSettingsResponse = zod.object({
+  "garageAlmostFullAlerts": zod.boolean(),
+  "favoriteGarageAlerts": zod.boolean(),
+  "parkingAvailabilityUpdates": zod.boolean(),
+  "uparkAnnouncements": zod.boolean(),
+  "notificationSound": zod.boolean()
+})
+
+
+
+
+
+export const UpdateUserFavoritesParams = zod.object({
+  "userId": zod.coerce.string().min(1)
+})
+
+export const UpdateUserFavoritesBody = zod.object({
+  "garageIds": zod.array(zod.string())
+})
+
+export const UpdateUserFavoritesResponseItem = zod.string()
+export const UpdateUserFavoritesResponse = zod.array(UpdateUserFavoritesResponseItem)
+
+
+
+
+
+export const ClearUserParkingHistoryParams = zod.object({
+  "userId": zod.coerce.string().min(1)
+})
+
+export const ClearUserParkingHistoryResponse = zod.void()
+
+
+
+
+
+export const CreateSupportRequestParams = zod.object({
+  "userId": zod.coerce.string().min(1)
+})
+
+export const createSupportRequestBodyCategoryMax = 60;
+
+export const createSupportRequestBodySubjectMin = 3;
+export const createSupportRequestBodySubjectMax = 160;
+
+export const createSupportRequestBodyMessageMin = 10;
+export const createSupportRequestBodyMessageMax = 4000;
+
+
+
+export const CreateSupportRequestBody = zod.object({
+  "category": zod.string().min(1).max(createSupportRequestBodyCategoryMax),
+  "subject": zod.string().min(createSupportRequestBodySubjectMin).max(createSupportRequestBodySubjectMax),
+  "message": zod.string().min(createSupportRequestBodyMessageMin).max(createSupportRequestBodyMessageMax)
+})
+
+export const createSupportRequestResponseOneCategoryMax = 60;
+
+export const createSupportRequestResponseOneSubjectMin = 3;
+export const createSupportRequestResponseOneSubjectMax = 160;
+
+export const createSupportRequestResponseOneMessageMin = 10;
+export const createSupportRequestResponseOneMessageMax = 4000;
+
+
+
+export const CreateSupportRequestResponse = zod.object({
+  "category": zod.string().min(1).max(createSupportRequestResponseOneCategoryMax),
+  "subject": zod.string().min(createSupportRequestResponseOneSubjectMin).max(createSupportRequestResponseOneSubjectMax),
+  "message": zod.string().min(createSupportRequestResponseOneMessageMin).max(createSupportRequestResponseOneMessageMax)
+}).and(zod.object({
+  "id": zod.number().int(),
+  "status": zod.string(),
+  "createdAt": zod.string()
+}))
+
+

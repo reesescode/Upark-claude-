@@ -1,33 +1,54 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { useListGarages } from "@workspace/api-client-react";
+import { useListGarages, useGetUserProfile, getGetUserProfileQueryKey } from "@workspace/api-client-react";
 import { GarageCard } from "@/components/GarageCard";
 import { Input } from "@/components/ui/input";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { Garage } from "@workspace/api-client-react";
+import { useUser } from "@/hooks/use-local-data";
 
 type SortOption = "nearest" | "most_available" | "least_full";
 
 export default function Garages() {
+  const { user } = useUser();
+  const { data: profile } = useGetUserProfile(user?.studentId || "", {
+    query: {
+      enabled: !!user?.studentId,
+      queryKey: getGetUserProfileQueryKey(user?.studentId || ""),
+    },
+  });
+
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("nearest");
-  
+  const initSortDone = useRef(false);
+
+  // Update sort when profile loads (only once)
+  useEffect(() => {
+    if (profile?.preferences?.defaultParkingPreference && !initSortDone.current) {
+      initSortDone.current = true;
+      const pref = profile.preferences.defaultParkingPreference;
+      if (pref === "closest") setSort("nearest");
+      else if (pref === "most_available") setSort("most_available");
+      else if (pref === "lowest_occupancy") setSort("least_full");
+    }
+  }, [profile?.preferences?.defaultParkingPreference]);
+
   const { data: garages, isLoading, isError } = useListGarages();
 
   const filteredAndSortedGarages = useMemo(() => {
     if (!garages) return [];
-    
+
     let result = [...garages];
-    
+
     // Filter by search
     if (search) {
       const q = search.toLowerCase();
-      result = result.filter(g => 
-        g.name.toLowerCase().includes(q) || 
+      result = result.filter(g =>
+        g.name.toLowerCase().includes(q) ||
         g.shortName.toLowerCase().includes(q)
       );
     }
-    
+
     // Sort
     result.sort((a, b) => {
       if (sort === "nearest") {
@@ -39,7 +60,7 @@ export default function Garages() {
       }
       return 0;
     });
-    
+
     return result;
   }, [garages, search, sort]);
 
@@ -47,34 +68,34 @@ export default function Garages() {
     <AppLayout>
       <div className="bg-primary pt-12 pb-6 px-4 rounded-b-[2rem] shadow-sm sticky top-0 z-20">
         <h1 className="text-3xl font-black text-white mb-6">Find Parking</h1>
-        
+
         <div className="relative flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <Input 
+            <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search garages or lots..." 
+              placeholder="Search garages or lots..."
               className="pl-11 border-none shadow-sm h-14 rounded-2xl text-base"
             />
           </div>
         </div>
-        
+
         <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
-          <SortChip 
-            active={sort === "nearest"} 
+          <SortChip
+            active={sort === "nearest"}
             onClick={() => setSort("nearest")}
-            label="Nearest to me" 
+            label="Nearest to me"
           />
-          <SortChip 
-            active={sort === "most_available"} 
+          <SortChip
+            active={sort === "most_available"}
             onClick={() => setSort("most_available")}
-            label="Most Open Spots" 
+            label="Most Open Spots"
           />
-          <SortChip 
-            active={sort === "least_full"} 
+          <SortChip
+            active={sort === "least_full"}
             onClick={() => setSort("least_full")}
-            label="Least Full" 
+            label="Least Full"
           />
         </div>
       </div>
@@ -87,7 +108,7 @@ export default function Garages() {
             ))}
           </div>
         )}
-        
+
         {isError && (
           <div className="text-center p-8 bg-red-50 rounded-2xl text-red-600 mt-4">
             <p className="font-semibold">Failed to load garages</p>
@@ -118,8 +139,8 @@ function SortChip({ active, label, onClick }: { active: boolean, label: string, 
     <button
       onClick={onClick}
       className={`whitespace-nowrap px-4 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${
-        active 
-          ? "bg-white text-primary border-transparent shadow-sm" 
+        active
+          ? "bg-white text-primary border-transparent shadow-sm"
           : "bg-primary/20 text-white border-primary/30 hover:bg-primary/30"
       }`}
     >
