@@ -1,0 +1,1 @@
+- [Playwright on Replit Nix](playwright-nix.md) — local Playwright validation needs Chromium downloaded and its shared-library runtime declared.
