@@ -134,9 +134,17 @@ export interface CampusSummary {
 export interface UserProfileInput {
   /**
      * @minLength 1
-     * @maxLength 120
+     * @maxLength 80
      */
-  displayName: string;
+  firstName: string;
+  /** @maxLength 80 */
+  lastName: string;
+  email: string;
+  /**
+     * @minLength 2
+     * @maxLength 160
+     */
+  university: string;
 }
 
 export type UserPreferencesDefaultParkingPreference = typeof UserPreferencesDefaultParkingPreference[keyof typeof UserPreferencesDefaultParkingPreference];
@@ -184,7 +192,18 @@ export interface UserFavoritesInput {
 }
 
 export interface UserProfileData {
+  id: number;
   userId: string;
+  /** @nullable */
+  authUserId: string | null;
+  /** @nullable */
+  firstName: string | null;
+  /** @nullable */
+  lastName: string | null;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  university: string | null;
   displayName: string;
   preferences: UserPreferences;
   notifications: NotificationSettings;

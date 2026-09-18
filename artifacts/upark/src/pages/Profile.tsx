@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useUser } from "@/hooks/use-local-data";
 import {
@@ -57,44 +57,23 @@ export default function Profile() {
   const { toast } = useToast();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>("menu");
-  const [profileReady, setProfileReady] = useState(false);
-
   const { data: profile, isLoading: isProfileLoading } = useGetUserProfile(user?.studentId || "", {
     query: {
-      enabled: !!user?.studentId && profileReady,
+      enabled: !!user?.studentId,
       queryKey: getGetUserProfileQueryKey(user?.studentId || ""),
       retry: false,
     }
   });
 
-  const upsertProfile = useUpsertUserProfile();
-  const initialized = useRef(false);
-
   useEffect(() => {
-    if (user?.studentId && !initialized.current) {
-      initialized.current = true;
-      upsertProfile.mutate({
-        userId: user.studentId,
-        data: { displayName: user.name || "Student" }
-      }, {
-        onSuccess: (data) => {
-          queryClient.setQueryData(getGetUserProfileQueryKey(user.studentId), data);
-          setProfileReady(true);
-        },
-        onError: () => {
-          toast({
-            title: "Profile unavailable",
-            description: "Please check your connection and try again.",
-            variant: "destructive",
-          });
-        }
-      });
+    if (user && !isProfileLoading && !profile) {
+      setLocation("/account-setup");
     }
-  }, [user, upsertProfile, queryClient, toast]);
+  }, [user, profile, isProfileLoading, setLocation]);
 
-  const handleLogout = () => {
-    logout();
-    setLocation("/");
+  const handleLogout = async () => {
+    queryClient.clear();
+    await logout();
   };
 
   if (!user) {
@@ -111,7 +90,7 @@ export default function Profile() {
   }
 
   const renderScreen = () => {
-    if ((upsertProfile.isPending || isProfileLoading) && currentScreen !== "menu") {
+    if (isProfileLoading && currentScreen !== "menu") {
       return (
         <div className="p-8 flex justify-center items-center h-40">
           <Loader2 className="animate-spin text-primary w-8 h-8" />
@@ -150,11 +129,12 @@ export default function Profile() {
                   <UserIcon className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold" data-testid="text-username">{user.name || "Student"}</h2>
-                  <p className="text-primary-foreground/80 font-medium" data-testid="text-studentid">ID: {user.studentId}</p>
+                  <h2 className="text-2xl font-bold" data-testid="text-username">{profile?.displayName || user.name || "Student"}</h2>
+                  <p className="text-primary-foreground/80 font-medium">{profile?.university || "UPARK student"}</p>
                 </div>
               </div>
             </div>
+            {profile && <ProfileDetailsEditor profile={profile} />}
 
             {/* Menu Items */}
             <div className="bg-white rounded-3xl shadow-xs border border-gray-100 overflow-hidden mb-6">
@@ -169,7 +149,7 @@ export default function Profile() {
 
             {/* Logout */}
             <button
-              onClick={handleLogout}
+              onClick={() => void handleLogout()}
               data-testid="button-sign-out"
               className="w-full bg-white rounded-3xl p-5 flex items-center justify-center gap-2 text-red-500 font-bold active:scale-95 transition-all shadow-xs border border-gray-100"
             >
@@ -237,6 +217,57 @@ function MenuItem({ icon, label, onClick, testId }: { icon: React.ReactNode; lab
       </div>
       <ChevronRight className="text-gray-300" size={20} />
     </button>
+  );
+}
+
+function ProfileDetailsEditor({ profile }: { profile: UserProfileData }) {
+  const [editing, setEditing] = useState(false);
+  const [firstName, setFirstName] = useState(profile.firstName || "");
+  const [lastName, setLastName] = useState(profile.lastName || "");
+  const [university, setUniversity] = useState(profile.university || "");
+  const saveProfile = useUpsertUserProfile();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const save = async () => {
+    const updated = await saveProfile.mutateAsync({
+      userId: profile.userId,
+      data: {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: profile.email || "",
+        university: university.trim(),
+      },
+    });
+    queryClient.setQueryData(getGetUserProfileQueryKey(profile.userId), updated);
+    setEditing(false);
+    toast({ title: "Profile updated", description: "Your changes have been saved." });
+  };
+
+  return (
+    <div className="bg-white rounded-3xl p-5 shadow-xs border border-gray-100 mb-6">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-bold text-gray-900">Account details</h3>
+        <Button variant="ghost" size="sm" onClick={() => setEditing(!editing)}>{editing ? "Cancel" : "Edit"}</Button>
+      </div>
+      {editing ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label htmlFor="profile-first">First name</Label><Input id="profile-first" value={firstName} onChange={e => setFirstName(e.target.value)} /></div>
+            <div><Label htmlFor="profile-last">Last name</Label><Input id="profile-last" value={lastName} onChange={e => setLastName(e.target.value)} /></div>
+          </div>
+          <div><Label htmlFor="profile-university">University</Label><Input id="profile-university" value={university} onChange={e => setUniversity(e.target.value)} /></div>
+          <Button className="w-full" onClick={() => void save()} disabled={saveProfile.isPending || !firstName.trim() || !university.trim()}>
+            {saveProfile.isPending ? "Saving..." : "Save changes"}
+          </Button>
+        </div>
+      ) : (
+        <div className="text-sm space-y-2">
+          <p><span className="text-gray-500">Email:</span> {profile.email}</p>
+          <p><span className="text-gray-500">University:</span> {profile.university}</p>
+        </div>
+      )}
+    </div>
   );
 }
 

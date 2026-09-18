@@ -10,7 +10,18 @@ import type { ParkingReport } from './parkingReport';
 import type { UserPreferences } from './userPreferences';
 
 export interface UserProfileData {
+  id: number;
   userId: string;
+  /** @nullable */
+  authUserId: string | null;
+  /** @nullable */
+  firstName: string | null;
+  /** @nullable */
+  lastName: string | null;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  university: string | null;
   displayName: string;
   preferences: UserPreferences;
   notifications: NotificationSettings;

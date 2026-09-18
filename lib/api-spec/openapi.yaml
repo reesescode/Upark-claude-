@@ -447,11 +447,21 @@ components:
     UserProfileInput:
       type: object
       properties:
-        displayName:
+        firstName:
           type: string
           minLength: 1
-          maxLength: 120
-      required: [displayName]
+          maxLength: 80
+        lastName:
+          type: string
+          maxLength: 80
+        email:
+          type: string
+          format: email
+        university:
+          type: string
+          minLength: 2
+          maxLength: 160
+      required: [firstName, lastName, email, university]
     UserPreferences:
       type: object
       properties:
@@ -515,8 +525,20 @@ components:
     UserProfileData:
       type: object
       properties:
+        id:
+          type: integer
         userId:
           type: string
+        authUserId:
+          type: ["string", "null"]
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        university:
+          type: ["string", "null"]
         displayName:
           type: string
         preferences:
@@ -532,7 +554,13 @@ components:
           items:
             $ref: "#/components/schemas/ParkingReport"
       required:
+        - id
         - userId
+        - authUserId
+        - firstName
+        - lastName
+        - email
+        - university
         - displayName
         - preferences
         - notifications

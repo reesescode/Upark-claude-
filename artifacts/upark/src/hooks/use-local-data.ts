@@ -7,8 +7,10 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { useClerk, useUser as useClerkUser } from '@clerk/react';
 
 const favoriteUpdateQueues = new Map<string, Promise<string[]>>();
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 function getFavoritesStorageKey(userId?: string) {
   return userId ? `upark_favorites_${userId}` : 'upark_favorites_guest';
@@ -31,33 +33,20 @@ function publishFavorites(key: string, favorites: string[]) {
 }
 
 export function useUser() {
-  const [user, setUser] = useState<{name: string, studentId: string} | null>(null);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('upark_user');
-      if (stored) setUser(JSON.parse(stored));
-    } catch (e) {
-      console.error('Failed to load user', e);
-    }
-  }, []);
-
-  const login = (name: string, studentId: string) => {
-    const u = { name, studentId };
-    setUser(u);
-    localStorage.setItem('upark_user', JSON.stringify(u));
-  };
-
-  const logout = () => {
-    if (user?.studentId) {
-      localStorage.removeItem(getFavoritesStorageKey(user.studentId));
-    }
-    setUser(null);
+  const { user: clerkUser, isLoaded } = useClerkUser();
+  const { signOut } = useClerk();
+  const user = clerkUser ? {
+    name: clerkUser.fullName || clerkUser.firstName || 'Student',
+    studentId: clerkUser.id,
+    email: clerkUser.primaryEmailAddress?.emailAddress || '',
+  } : null;
+  const logout = async () => {
+    if (user?.studentId) localStorage.removeItem(getFavoritesStorageKey(user.studentId));
     localStorage.removeItem('upark_user');
     localStorage.removeItem('upark_favorites');
+    await signOut({ redirectUrl: basePath || '/' });
   };
-
-  return { user, login, logout };
+  return { user, logout, isLoaded };
 }
 
 export function useFavorites() {

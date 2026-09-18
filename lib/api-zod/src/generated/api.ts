@@ -155,7 +155,13 @@ export const GetUserProfileParams = zod.object({
 })
 
 export const GetUserProfileResponse = zod.object({
+  "id": zod.number().int(),
   "userId": zod.string(),
+  "authUserId": zod.string().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "email": zod.string().nullable(),
+  "university": zod.string().nullable(),
   "displayName": zod.string(),
   "preferences": zod.object({
   "defaultParkingPreference": zod.enum(['closest', 'most_available', 'lowest_occupancy']),
@@ -191,16 +197,30 @@ export const UpsertUserProfileParams = zod.object({
   "userId": zod.coerce.string().min(1)
 })
 
-export const upsertUserProfileBodyDisplayNameMax = 120;
+export const upsertUserProfileBodyFirstNameMax = 80;
+
+export const upsertUserProfileBodyLastNameMax = 80;
+
+export const upsertUserProfileBodyUniversityMin = 2;
+export const upsertUserProfileBodyUniversityMax = 160;
 
 
 
 export const UpsertUserProfileBody = zod.object({
-  "displayName": zod.string().min(1).max(upsertUserProfileBodyDisplayNameMax)
+  "firstName": zod.string().min(1).max(upsertUserProfileBodyFirstNameMax),
+  "lastName": zod.string().max(upsertUserProfileBodyLastNameMax),
+  "email": zod.string().email(),
+  "university": zod.string().min(upsertUserProfileBodyUniversityMin).max(upsertUserProfileBodyUniversityMax)
 })
 
 export const UpsertUserProfileResponse = zod.object({
+  "id": zod.number().int(),
   "userId": zod.string(),
+  "authUserId": zod.string().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "email": zod.string().nullable(),
+  "university": zod.string().nullable(),
   "displayName": zod.string(),
   "preferences": zod.object({
   "defaultParkingPreference": zod.enum(['closest', 'most_available', 'lowest_occupancy']),

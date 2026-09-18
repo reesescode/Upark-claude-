@@ -9,7 +9,15 @@
 export interface UserProfileInput {
   /**
      * @minLength 1
-     * @maxLength 120
+     * @maxLength 80
      */
-  displayName: string;
+  firstName: string;
+  /** @maxLength 80 */
+  lastName: string;
+  email: string;
+  /**
+     * @minLength 2
+     * @maxLength 160
+     */
+  university: string;
 }

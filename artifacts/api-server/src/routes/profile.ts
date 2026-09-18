@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { desc, eq, inArray } from "drizzle-orm";
+import { clerkClient, getAuth } from "@clerk/express";
 import {
   db,
   garagesTable,
@@ -33,6 +34,22 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+router.use("/users/:userId", (req, res, next) => {
+  const authUserId =
+    process.env.NODE_ENV === "test"
+      ? req.header("x-test-user-id")
+      : getAuth(req).userId;
+  if (!authUserId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (authUserId !== req.params.userId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  next();
+});
 
 async function ensureUser(userId: string, displayName = "Student") {
   await db
@@ -119,7 +136,13 @@ async function getProfileData(userId: string) {
 
   if (!profile || !preferences || !notifications) return null;
   return {
+    id: profile.id,
     userId: profile.userId,
+    authUserId: profile.authUserId,
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    email: profile.email,
+    university: profile.university,
     displayName: profile.displayName,
     preferences: toPreferences(preferences),
     notifications: toNotifications(notifications),
@@ -153,16 +176,26 @@ router.put("/users/:userId/profile", async (req, res): Promise<void> => {
     .insert(userProfilesTable)
     .values({
       userId: params.data.userId,
-      displayName: body.data.displayName.trim(),
+      authUserId: params.data.userId,
+      firstName: body.data.firstName.trim(),
+      lastName: body.data.lastName.trim(),
+      email: body.data.email.trim().toLowerCase(),
+      university: body.data.university.trim(),
+      displayName: `${body.data.firstName} ${body.data.lastName}`.trim(),
     })
     .onConflictDoUpdate({
       target: userProfilesTable.userId,
       set: {
-        displayName: body.data.displayName.trim(),
+        authUserId: params.data.userId,
+        firstName: body.data.firstName.trim(),
+        lastName: body.data.lastName.trim(),
+        email: body.data.email.trim().toLowerCase(),
+        university: body.data.university.trim(),
+        displayName: `${body.data.firstName} ${body.data.lastName}`.trim(),
         updatedAt: new Date(),
       },
     });
-  await ensureUser(params.data.userId, body.data.displayName.trim());
+  await ensureUser(params.data.userId, body.data.firstName.trim());
   const data = await getProfileData(params.data.userId);
   res.json(UpsertUserProfileResponse.parse(data));
 });
@@ -263,6 +296,7 @@ router.delete("/users/:userId/profile", async (req, res): Promise<void> => {
       .delete(userProfilesTable)
       .where(eq(userProfilesTable.userId, params.data.userId));
   });
+  await clerkClient.users.deleteUser(params.data.userId);
   res.status(204).end();
 });
 

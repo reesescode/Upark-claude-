@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import request from "supertest";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
+import { clerkClient } from "@clerk/express";
 import {
   db,
   notificationSettingsTable,
@@ -17,14 +18,22 @@ import app from "../app";
 const deletedUserId = `profile-delete-${randomUUID()}`;
 const retainedUserId = `profile-retain-${randomUUID()}`;
 const garageId = "north-deck";
+const deleteAuthUser = vi.spyOn(clerkClient.users, "deleteUser");
 
 async function createPopulatedProfile(userId: string) {
   await request(app)
     .put(`/api/users/${userId}/profile`)
-    .send({ displayName: `Profile ${userId}` })
+    .set("x-test-user-id", userId)
+    .send({
+      firstName: "Profile",
+      lastName: userId,
+      email: `${userId}@example.edu`,
+      university: "Florida Gulf Coast University",
+    })
     .expect(200);
   await request(app)
     .put(`/api/users/${userId}/preferences`)
+    .set("x-test-user-id", userId)
     .send({
       defaultParkingPreference: "most_available",
       defaultCampus: "FGCU",
@@ -37,6 +46,7 @@ async function createPopulatedProfile(userId: string) {
     .expect(200);
   await request(app)
     .put(`/api/users/${userId}/notifications`)
+    .set("x-test-user-id", userId)
     .send({
       garageAlmostFullAlerts: false,
       favoriteGarageAlerts: true,
@@ -47,10 +57,12 @@ async function createPopulatedProfile(userId: string) {
     .expect(200);
   await request(app)
     .put(`/api/users/${userId}/favorites`)
+    .set("x-test-user-id", userId)
     .send({ garageIds: [garageId] })
     .expect(200);
   await request(app)
     .post(`/api/users/${userId}/support-requests`)
+    .set("x-test-user-id", userId)
     .send({
       category: "feedback",
       subject: "Deletion test",
@@ -65,7 +77,12 @@ async function createPopulatedProfile(userId: string) {
 }
 
 describe("profile account deletion", () => {
+  beforeAll(() => {
+    deleteAuthUser.mockResolvedValue({} as never);
+  });
+
   afterAll(async () => {
+    deleteAuthUser.mockRestore();
     await db
       .delete(parkingReportsTable)
       .where(eq(parkingReportsTable.userId, deletedUserId));
@@ -87,7 +104,9 @@ describe("profile account deletion", () => {
 
     await request(app)
       .delete(`/api/users/${deletedUserId}/profile`)
+      .set("x-test-user-id", deletedUserId)
       .expect(204);
+    expect(deleteAuthUser).toHaveBeenCalledWith(deletedUserId);
 
     const deletedRows = await Promise.all([
       db
@@ -144,5 +163,15 @@ describe("profile account deletion", () => {
         .where(eq(parkingReportsTable.userId, retainedUserId)),
     ]);
     expect(retainedRows.every((rows) => rows.length === 1)).toBe(true);
+  });
+
+  it("rejects missing and mismatched authenticated identities", async () => {
+    await request(app)
+      .get(`/api/users/${retainedUserId}/profile`)
+      .expect(401);
+    await request(app)
+      .get(`/api/users/${retainedUserId}/profile`)
+      .set("x-test-user-id", "different-user")
+      .expect(403);
   });
 });
