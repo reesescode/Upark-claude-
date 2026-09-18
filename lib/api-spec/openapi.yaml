@@ -101,6 +101,57 @@ paths:
                 $ref: "#/components/schemas/Garage"
         "404":
           description: Garage not found
+  /garages/{garageId}/reports:
+    get:
+      operationId: listParkingReports
+      tags: [parking]
+      summary: List recent parking reports
+      description: Returns database-backed student reports for a garage, newest first.
+      parameters:
+        - name: garageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Recent parking reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingReport"
+        "404":
+          description: Garage not found
+    post:
+      operationId: createParkingReport
+      tags: [parking]
+      summary: Submit a parking report
+      description: Saves a student parking report for a garage.
+      parameters:
+        - name: garageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParkingReportInput"
+      responses:
+        "201":
+          description: Parking report created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingReport"
+        "400":
+          description: Invalid report
+        "404":
+          description: Garage not found
   /campus/summary:
     get:
       operationId: getCampusSummary
@@ -196,6 +247,35 @@ components:
       required:
         - availableSpots
         - totalSpots
+    ParkingReport:
+      type: object
+      properties:
+        id:
+          type: integer
+        garageId:
+          type: string
+        availabilityStatus:
+          type: string
+          enum: [plenty_spots, filling_up, almost_full, full]
+        createdAt:
+          type: string
+      required:
+        - id
+        - garageId
+        - availabilityStatus
+        - createdAt
+    ParkingReportInput:
+      type: object
+      properties:
+        userId:
+          type: string
+          minLength: 1
+        availabilityStatus:
+          type: string
+          enum: [plenty_spots, filling_up, almost_full, full]
+      required:
+        - userId
+        - availabilityStatus
     CampusSummary:
       type: object
       properties:

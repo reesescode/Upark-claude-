@@ -1,10 +1,21 @@
 import { Router, type IRouter } from "express";
 import { asc, desc, eq, ilike, or, sql } from "drizzle-orm";
-import { db, garagesTable, type GarageRecord } from "@workspace/db";
 import {
+  db,
+  garagesTable,
+  parkingReportsTable,
+  type GarageRecord,
+  type ParkingReportRecord,
+} from "@workspace/db";
+import {
+  CreateParkingReportBody,
+  CreateParkingReportParams,
+  CreateParkingReportResponse,
   GetCampusSummaryResponse,
   GetGarageParams,
   GetGarageResponse,
+  ListParkingReportsParams,
+  ListParkingReportsResponse,
   ListGaragesQueryParams,
   ListGaragesResponse,
   UpdateGarageAvailabilityBody,
@@ -31,6 +42,13 @@ function toGarage(record: GarageRecord) {
     occupancyPercent,
     status,
     updatedAt: record.updatedAt.toISOString(),
+  };
+}
+
+function toParkingReport(record: ParkingReportRecord) {
+  return {
+    ...record,
+    createdAt: record.createdAt.toISOString(),
   };
 }
 
@@ -115,6 +133,73 @@ router.patch(
     res.json(UpdateGarageAvailabilityResponse.parse(toGarage(record)));
   },
 );
+
+router.get("/garages/:garageId/reports", async (req, res): Promise<void> => {
+  const params = ListParkingReportsParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [garage] = await db
+    .select({ id: garagesTable.id })
+    .from(garagesTable)
+    .where(eq(garagesTable.id, params.data.garageId));
+
+  if (!garage) {
+    res.status(404).json({ error: "Garage not found" });
+    return;
+  }
+
+  const reports = await db
+    .select()
+    .from(parkingReportsTable)
+    .where(eq(parkingReportsTable.garageId, params.data.garageId))
+    .orderBy(
+      desc(parkingReportsTable.createdAt),
+      desc(parkingReportsTable.id),
+    )
+    .limit(20);
+
+  res.json(ListParkingReportsResponse.parse(reports.map(toParkingReport)));
+});
+
+router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
+  const params = CreateParkingReportParams.safeParse(req.params);
+  const body = CreateParkingReportBody.safeParse(req.body);
+
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [garage] = await db
+    .select({ id: garagesTable.id })
+    .from(garagesTable)
+    .where(eq(garagesTable.id, params.data.garageId));
+
+  if (!garage) {
+    res.status(404).json({ error: "Garage not found" });
+    return;
+  }
+
+  const [report] = await db
+    .insert(parkingReportsTable)
+    .values({
+      userId: body.data.userId,
+      garageId: params.data.garageId,
+      availabilityStatus: body.data.availabilityStatus,
+    })
+    .returning();
+
+  res
+    .status(201)
+    .json(CreateParkingReportResponse.parse(toParkingReport(report)));
+});
 
 router.get("/campus/summary", async (_req, res): Promise<void> => {
   const [summary] = await db

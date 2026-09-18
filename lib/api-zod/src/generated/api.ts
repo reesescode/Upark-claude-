@@ -121,6 +121,47 @@ export const UpdateGarageAvailabilityResponse = zod.object({
 
 
 /**
+ * Returns database-backed student reports for a garage, newest first.
+ * @summary List recent parking reports
+ */
+export const ListParkingReportsParams = zod.object({
+  "garageId": zod.coerce.string()
+})
+
+export const ListParkingReportsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "garageId": zod.string(),
+  "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full']),
+  "createdAt": zod.string()
+})
+export const ListParkingReportsResponse = zod.array(ListParkingReportsResponseItem)
+
+
+/**
+ * Saves a student parking report for a garage.
+ * @summary Submit a parking report
+ */
+export const CreateParkingReportParams = zod.object({
+  "garageId": zod.coerce.string()
+})
+
+
+
+
+export const CreateParkingReportBody = zod.object({
+  "userId": zod.string().min(1),
+  "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full'])
+})
+
+export const CreateParkingReportResponse = zod.object({
+  "id": zod.number().int(),
+  "garageId": zod.string(),
+  "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full']),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Get campus parking summary
  */
 export const GetCampusSummaryResponse = zod.object({

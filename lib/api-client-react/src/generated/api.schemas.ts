@@ -54,6 +54,39 @@ export interface AvailabilityUpdate {
   totalSpots: number;
 }
 
+export type ParkingReportAvailabilityStatus = typeof ParkingReportAvailabilityStatus[keyof typeof ParkingReportAvailabilityStatus];
+
+
+export const ParkingReportAvailabilityStatus = {
+  plenty_spots: 'plenty_spots',
+  filling_up: 'filling_up',
+  almost_full: 'almost_full',
+  full: 'full',
+} as const;
+
+export interface ParkingReport {
+  id: number;
+  garageId: string;
+  availabilityStatus: ParkingReportAvailabilityStatus;
+  createdAt: string;
+}
+
+export type ParkingReportInputAvailabilityStatus = typeof ParkingReportInputAvailabilityStatus[keyof typeof ParkingReportInputAvailabilityStatus];
+
+
+export const ParkingReportInputAvailabilityStatus = {
+  plenty_spots: 'plenty_spots',
+  filling_up: 'filling_up',
+  almost_full: 'almost_full',
+  full: 'full',
+} as const;
+
+export interface ParkingReportInput {
+  /** @minLength 1 */
+  userId: string;
+  availabilityStatus: ParkingReportInputAvailabilityStatus;
+}
+
 export interface CampusSummary {
   openSpots: number;
   totalSpots: number;

@@ -1,21 +1,83 @@
+import { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
-import { useGetGarage, useUpdateGarageAvailability, getGetGarageQueryKey } from "@workspace/api-client-react";
+import {
+  useGetGarage,
+  useUpdateGarageAvailability,
+  getGetGarageQueryKey,
+  useListParkingReports,
+  useCreateParkingReport,
+  getListParkingReportsQueryKey,
+  type ParkingReport,
+  type ParkingReportInputAvailabilityStatus,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Navigation, Heart, Clock, DollarSign, Info, MapPin, Map as MapIcon, Footprints, AlertTriangle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ChevronLeft, Navigation, Heart, Clock, DollarSign, Info, MapPin, Map as MapIcon, Footprints, AlertTriangle, MessageSquarePlus, CheckCircle2, Loader2 } from "lucide-react";
 import { getStatusColor, getStatusText, getStatusColorSolid } from "@/lib/garage-utils";
-import { useFavorites } from "@/hooks/use-local-data";
+import { useFavorites, useUser } from "@/hooks/use-local-data";
 import { cn } from "@/lib/utils";
+
+const reportOptions: Array<{
+  value: ParkingReportInputAvailabilityStatus;
+  label: string;
+  color: string;
+}> = [
+  { value: "plenty_spots", label: "Plenty of Spots", color: "bg-green-500" },
+  { value: "filling_up", label: "Filling Up", color: "bg-amber-500" },
+  { value: "almost_full", label: "Almost Full", color: "bg-orange-500" },
+  { value: "full", label: "Full", color: "bg-red-500" },
+];
+
+const reportLabels: Record<ParkingReport["availabilityStatus"], string> = {
+  plenty_spots: "Plenty of Spots",
+  filling_up: "Filling Up",
+  almost_full: "Almost Full",
+  full: "Full",
+};
+
+const reportColors: Record<ParkingReport["availabilityStatus"], string> = {
+  plenty_spots: "bg-green-50 text-green-700 border-green-100",
+  filling_up: "bg-amber-50 text-amber-700 border-amber-100",
+  almost_full: "bg-orange-50 text-orange-700 border-orange-100",
+  full: "bg-red-50 text-red-700 border-red-100",
+};
+
+function formatReportedTime(createdAt: string) {
+  const created = new Date(createdAt);
+  if (Date.now() - created.getTime() < 60_000) return "reported just now";
+  return `reported ${formatDistanceToNow(created, { addSuffix: true })}`;
+}
 
 export default function GarageDetails() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const { data: garage, isLoading, isError } = useGetGarage(id!);
+  const {
+    data: reports,
+    isLoading: reportsLoading,
+    isError: reportsError,
+  } = useListParkingReports(id!);
   const updateAvailability = useUpdateGarageAvailability();
+  const createReport = useCreateParkingReport();
+  const [reportOpen, setReportOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] =
+    useState<ParkingReportInputAvailabilityStatus | null>(null);
+  const [reportSuccess, setReportSuccess] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   
   const [, setLocation] = useLocation();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { user } = useUser();
 
   const handleReportFull = () => {
     if (!garage) return;
@@ -31,6 +93,49 @@ export default function GarageDetails() {
         queryClient.setQueryData(getGetGarageQueryKey(garage.id), updatedGarage);
       }
     });
+  };
+
+  const handleSubmitReport = (event: React.FormEvent) => {
+    event.preventDefault();
+    setReportError(null);
+    setReportSuccess(false);
+
+    if (!selectedStatus) {
+      setReportError("Select a parking status before submitting.");
+      return;
+    }
+    if (!user?.studentId) {
+      setReportError("Please sign in from the welcome screen before reporting.");
+      return;
+    }
+
+    createReport.mutate(
+      {
+        garageId: id!,
+        data: {
+          userId: user.studentId,
+          availabilityStatus: selectedStatus,
+        },
+      },
+      {
+        onSuccess: (newReport) => {
+          queryClient.setQueryData<ParkingReport[]>(
+            getListParkingReportsQueryKey(id!),
+            (current = []) => [newReport, ...current].slice(0, 20),
+          );
+          setReportSuccess(true);
+          setReportOpen(false);
+          setSelectedStatus(null);
+        },
+        onError: (error) => {
+          setReportError(
+            error instanceof Error
+              ? error.message
+              : "Unable to submit your report. Please try again.",
+          );
+        },
+      },
+    );
   };
 
   if (isLoading) {
@@ -62,7 +167,18 @@ export default function GarageDetails() {
   const favorite = isFavorite(garage.id);
 
   return (
-    <AppLayout showNav={false} className="bg-gray-50 pb-28">
+    <Dialog
+      open={reportOpen}
+      onOpenChange={(open) => {
+        if (createReport.isPending) return;
+        if (open) {
+          setReportError(null);
+          setSelectedStatus("plenty_spots");
+        }
+        setReportOpen(open);
+      }}
+    >
+      <AppLayout showNav={false} className="bg-gray-50 pb-28">
       {/* Header / Map placeholder */}
       <div className="relative h-[250px] bg-gray-200 w-full overflow-hidden">
         {/* Mock map background */}
@@ -133,6 +249,36 @@ export default function GarageDetails() {
           </button>
         </div>
 
+        {reportSuccess && (
+          <div
+            role="status"
+            className="flex items-center gap-3 rounded-2xl border border-green-100 bg-green-50 p-4 text-green-800"
+          >
+            <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+            <p className="font-bold">Parking report submitted!</p>
+          </div>
+        )}
+
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-blue-50 text-primary rounded-2xl flex items-center justify-center flex-shrink-0">
+              <MessageSquarePlus size={24} />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-bold text-gray-900">How is parking right now?</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Help other students find a spot.
+              </p>
+            </div>
+          </div>
+          <DialogTrigger asChild>
+            <Button className="w-full h-12 rounded-2xl mt-4 gap-2">
+              <MessageSquarePlus size={19} />
+              Report Parking
+            </Button>
+          </DialogTrigger>
+        </div>
+
         {/* Info Grid */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex flex-col items-center text-center justify-center">
@@ -182,7 +328,128 @@ export default function GarageDetails() {
             </div>
           </div>
         </div>
+
+        <section className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-gray-900">Recent Parking Reports</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Submitted by students for this garage
+            </p>
+          </div>
+
+          {reportsLoading && (
+            <div className="space-y-3" aria-label="Loading parking reports">
+              {[0, 1].map((item) => (
+                <div key={item} className="h-16 rounded-2xl bg-gray-100 animate-pulse" />
+              ))}
+            </div>
+          )}
+
+          {reportsError && (
+            <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-medium text-red-700">
+              Recent reports could not be loaded. Please try again.
+            </div>
+          )}
+
+          {!reportsLoading && !reportsError && reports?.length === 0 && (
+            <div className="rounded-2xl bg-gray-50 p-5 text-center">
+              <p className="font-semibold text-gray-700">No reports yet</p>
+              <p className="text-sm text-gray-500 mt-1">Be the first to report parking here.</p>
+            </div>
+          )}
+
+          {!reportsLoading && !reportsError && reports && reports.length > 0 && (
+            <div className="space-y-3">
+              {reports.map((report) => (
+                <div
+                  key={report.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-gray-50 p-4"
+                >
+                  <span
+                    className={cn(
+                      "inline-flex rounded-xl border px-3 py-1.5 text-sm font-bold",
+                      reportColors[report.availabilityStatus],
+                    )}
+                  >
+                    {reportLabels[report.availabilityStatus]}
+                  </span>
+                  <span className="text-xs font-medium text-gray-500 text-right">
+                    {formatReportedTime(report.createdAt)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
+
+      <DialogContent className="w-[calc(100%-2rem)] max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border-0 p-6">
+          <DialogHeader className="pr-8 text-left">
+            <DialogTitle className="text-2xl font-black text-gray-900">
+              Report Parking
+            </DialogTitle>
+            <DialogDescription>{garage.name}</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmitReport}>
+            <fieldset className="mt-6 space-y-3">
+              <legend className="text-sm font-bold text-gray-700 mb-3">
+                What does availability look like?
+              </legend>
+              {reportOptions.map((option) => (
+                <label
+                  key={option.value}
+                  className={cn(
+                    "flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border-2 px-4 py-3 transition-colors",
+                    selectedStatus === option.value
+                      ? "border-primary bg-blue-50"
+                      : "border-gray-100 bg-white",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="availabilityStatus"
+                    value={option.value}
+                    checked={selectedStatus === option.value}
+                    onChange={() => {
+                      setSelectedStatus(option.value);
+                      setReportError(null);
+                    }}
+                    className="sr-only"
+                  />
+                  <span className={cn("h-3 w-3 rounded-full", option.color)} />
+                  <span className="font-bold text-gray-900">{option.label}</span>
+                  <span
+                    className={cn(
+                      "ml-auto h-5 w-5 rounded-full border-2",
+                      selectedStatus === option.value
+                        ? "border-primary bg-primary shadow-[inset_0_0_0_4px_white]"
+                        : "border-gray-300",
+                    )}
+                  />
+                </label>
+              ))}
+            </fieldset>
+
+            {reportError && (
+              <div
+                role="alert"
+                className="mt-4 rounded-2xl border border-red-100 bg-red-50 p-3 text-sm font-medium text-red-700"
+              >
+                {reportError}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              className="mt-6 h-14 w-full rounded-2xl text-base gap-2"
+              disabled={createReport.isPending}
+            >
+              {createReport.isPending && <Loader2 size={19} className="animate-spin" />}
+              {createReport.isPending ? "Submitting..." : "Submit Report"}
+            </Button>
+          </form>
+      </DialogContent>
 
       {/* Floating Action Button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 pb-safe-8 bg-gradient-to-t from-white via-white to-transparent pt-8 z-30">
@@ -198,6 +465,7 @@ export default function GarageDetails() {
           </Link>
         </div>
       </div>
-    </AppLayout>
+      </AppLayout>
+    </Dialog>
   );
 }

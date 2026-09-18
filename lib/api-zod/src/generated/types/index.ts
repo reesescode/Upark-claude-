@@ -14,3 +14,7 @@ export * from './garageType';
 export * from './healthStatus';
 export * from './listGaragesParams';
 export * from './listGaragesSort';
+export * from './parkingReport';
+export * from './parkingReportAvailabilityStatus';
+export * from './parkingReportInput';
+export * from './parkingReportInputAvailabilityStatus';
