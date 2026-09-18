@@ -11,9 +11,23 @@ export default function AccountSetup() {
   const { user, isLoaded } = useUser();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [university, setUniversity] = useState("Florida Gulf Coast University");
+  const pendingProfile = (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("upark_pending_profile") || "{}") as {
+        firstName?: string;
+        lastName?: string;
+        university?: string;
+      };
+    } catch {
+      return {};
+    }
+  })();
+  const [firstName, setFirstName] = useState(pendingProfile.firstName || "");
+  const [lastName, setLastName] = useState(pendingProfile.lastName || "");
+  const [university, setUniversity] = useState(
+    pendingProfile.university || "Florida Gulf Coast University (FGCU)",
+  );
+  const [error, setError] = useState("");
   const profile = useGetUserProfile(user?.id || "", {
     query: {
       enabled: !!user?.id,
@@ -30,8 +44,18 @@ export default function AccountSetup() {
     }
   }, [user]);
   useEffect(() => {
-    if (profile.data) setLocation("/profile");
-  }, [profile.data, setLocation]);
+    const savedProfile = profile.data;
+    if (
+      savedProfile &&
+      savedProfile.authUserId === user?.id &&
+      savedProfile.firstName &&
+      savedProfile.lastName &&
+      savedProfile.email &&
+      savedProfile.university
+    ) {
+      setLocation("/profile");
+    }
+  }, [profile.data, setLocation, user?.id]);
   useEffect(() => {
     if (isLoaded && !user) setLocation("/sign-in");
   }, [isLoaded, user, setLocation]);
@@ -39,17 +63,23 @@ export default function AccountSetup() {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user) return;
-    await save.mutateAsync({
-      userId: user.id,
-      data: {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: user.primaryEmailAddress?.emailAddress || "",
-        university: university.trim(),
-      },
-    });
-    toast({ title: "Account created", description: "Your UPARK profile is ready." });
-    setLocation("/profile");
+    setError("");
+    try {
+      await save.mutateAsync({
+        userId: user.id,
+        data: {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: user.primaryEmailAddress?.emailAddress || "",
+          university: university.trim(),
+        },
+      });
+      sessionStorage.removeItem("upark_pending_profile");
+      toast({ title: "Account created", description: "Your UPARK profile is ready." });
+      setLocation("/profile");
+    } catch {
+      setError("We could not save your profile. Your entries are still here—please try again.");
+    }
   };
   return (
     <div className="min-h-[100dvh] bg-primary/5 p-5 flex items-center justify-center">
@@ -61,7 +91,8 @@ export default function AccountSetup() {
         </div>
         <div><Label htmlFor="email">Email</Label><Input id="email" value={user?.primaryEmailAddress?.emailAddress || ""} disabled /></div>
         <div><Label htmlFor="university">University</Label><Input id="university" value={university} onChange={e => setUniversity(e.target.value)} required /></div>
-        <Button type="submit" className="w-full h-12 rounded-xl" disabled={save.isPending}>{save.isPending ? "Saving..." : "Create UPARK Profile"}</Button>
+        {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">{error}</p>}
+        <Button type="submit" className="w-full h-12 rounded-xl" disabled={save.isPending || !firstName.trim() || !lastName.trim() || !university.trim()}>{save.isPending ? "Saving..." : "Create UPARK Profile"}</Button>
       </form>
     </div>
   );

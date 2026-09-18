@@ -1,0 +1,59 @@
+Fix the UPARK account creation system. Currently, when I fill out the Sign Up form and click Create Account, nothing happens.
+
+First inspect the existing authentication system, signup form, API routes, and database schema. Identify why account creation is not working before changing anything.
+
+Make the complete signup flow functional:
+
+1. User enters:
+   - First name
+   - Last name
+   - Email
+   - Password
+   - Confirm password
+   - University (default FGCU)
+
+2. Validate the form:
+   - All required fields completed
+   - Valid email
+   - Password requirements met
+   - Passwords match
+   - Email is not already registered
+
+3. When Create Account is clicked:
+   - Show a loading state
+   - Create the authentication account securely
+   - Never store plaintext passwords
+   - Create a corresponding record in the Users/profile database table
+   - Link the profile to the authentication user's ID
+   - Save first name, last name, email, university, and timestamps
+
+4. After successful signup:
+   - Automatically log the user in
+   - Show "Account created successfully"
+   - Redirect them to the UPARK dashboard
+   - Display their name/profile information in the Profile section
+
+5. If signup fails:
+   - Display a clear error message explaining what happened
+   - Do not silently fail
+   - Do not redirect the user
+   - Do not create partial or duplicate database records
+
+6. Make login and logout work with these accounts.
+
+7. User sessions should persist appropriately after refreshing the page.
+
+IMPORTANT:
+Do not create a second authentication system if one already exists. Use the project's existing authentication framework and database. Do not break existing parking reports or other working UPARK features.
+
+After fixing it, run an end-to-end test:
+Sign Up → Create Account → verify database record → Dashboard → Profile → Log Out → Log In → verify same profile loads.
+
+Also test duplicate emails and incorrect passwords.
+
+At the end, tell me:
+- Why signup was previously not working
+- What files you changed
+- Where user account/profile records are stored
+- How I can view the newly created user in the database
+- Whether the complete signup/login flow passed testing

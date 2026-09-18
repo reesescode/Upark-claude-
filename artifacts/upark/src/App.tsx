@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef } from 'react';
-import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
+import { ClerkProvider, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -22,6 +22,7 @@ import Navigate from '@/pages/Navigate';
 import Favorites from '@/pages/Favorites';
 import Profile from '@/pages/Profile';
 import AccountSetup from '@/pages/AccountSetup';
+import { SignInPage, SignUpPage } from '@/pages/Auth';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -35,14 +36,6 @@ function stripBase(path: string) {
   return basePath && path.startsWith(basePath)
     ? path.slice(basePath.length) || '/'
     : path;
-}
-
-function SignInPage() {
-  return <div className="min-h-[100dvh] bg-primary/5 flex items-center justify-center p-4"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
-}
-
-function SignUpPage() {
-  return <div className="min-h-[100dvh] bg-primary/5 flex items-center justify-center p-4"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} forceRedirectUrl={`${basePath}/account-setup`} /></div>;
 }
 
 function AuthCacheInvalidator() {

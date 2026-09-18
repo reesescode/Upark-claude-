@@ -51,11 +51,27 @@ router.use("/users/:userId", (req, res, next) => {
   next();
 });
 
-async function ensureUser(userId: string, displayName = "Student") {
-  await db
-    .insert(userProfilesTable)
-    .values({ userId, displayName })
-    .onConflictDoNothing();
+async function ensureUser(userId: string) {
+  const [profile] = await db
+    .select({
+      authUserId: userProfilesTable.authUserId,
+      firstName: userProfilesTable.firstName,
+      lastName: userProfilesTable.lastName,
+      email: userProfilesTable.email,
+      university: userProfilesTable.university,
+    })
+    .from(userProfilesTable)
+    .where(eq(userProfilesTable.userId, userId));
+  if (
+    !profile ||
+    profile.authUserId !== userId ||
+    !profile.firstName ||
+    !profile.lastName ||
+    !profile.email ||
+    !profile.university
+  ) {
+    return false;
+  }
   await Promise.all([
     db
       .insert(userPreferencesTable)
@@ -66,6 +82,7 @@ async function ensureUser(userId: string, displayName = "Student") {
       .values({ userId })
       .onConflictDoNothing(),
   ]);
+  return true;
 }
 
 function toPreferences(record: typeof userPreferencesTable.$inferSelect) {
@@ -172,30 +189,39 @@ router.put("/users/:userId/profile", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid profile" });
     return;
   }
-  await db
-    .insert(userProfilesTable)
-    .values({
-      userId: params.data.userId,
-      authUserId: params.data.userId,
-      firstName: body.data.firstName.trim(),
-      lastName: body.data.lastName.trim(),
-      email: body.data.email.trim().toLowerCase(),
-      university: body.data.university.trim(),
-      displayName: `${body.data.firstName} ${body.data.lastName}`.trim(),
-    })
-    .onConflictDoUpdate({
-      target: userProfilesTable.userId,
-      set: {
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(userProfilesTable)
+      .values({
+        userId: params.data.userId,
         authUserId: params.data.userId,
         firstName: body.data.firstName.trim(),
         lastName: body.data.lastName.trim(),
         email: body.data.email.trim().toLowerCase(),
         university: body.data.university.trim(),
         displayName: `${body.data.firstName} ${body.data.lastName}`.trim(),
-        updatedAt: new Date(),
-      },
-    });
-  await ensureUser(params.data.userId, body.data.firstName.trim());
+      })
+      .onConflictDoUpdate({
+        target: userProfilesTable.userId,
+        set: {
+          authUserId: params.data.userId,
+          firstName: body.data.firstName.trim(),
+          lastName: body.data.lastName.trim(),
+          email: body.data.email.trim().toLowerCase(),
+          university: body.data.university.trim(),
+          displayName: `${body.data.firstName} ${body.data.lastName}`.trim(),
+          updatedAt: new Date(),
+        },
+      });
+    await tx
+      .insert(userPreferencesTable)
+      .values({ userId: params.data.userId })
+      .onConflictDoNothing();
+    await tx
+      .insert(notificationSettingsTable)
+      .values({ userId: params.data.userId })
+      .onConflictDoNothing();
+  });
   const data = await getProfileData(params.data.userId);
   res.json(UpsertUserProfileResponse.parse(data));
 });
@@ -207,7 +233,10 @@ router.put("/users/:userId/preferences", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid preferences" });
     return;
   }
-  await ensureUser(params.data.userId);
+  if (!(await ensureUser(params.data.userId))) {
+    res.status(404).json({ error: "Complete profile not found" });
+    return;
+  }
   const [record] = await db
     .insert(userPreferencesTable)
     .values({ userId: params.data.userId, ...body.data })
@@ -226,7 +255,10 @@ router.put("/users/:userId/notifications", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid notification settings" });
     return;
   }
-  await ensureUser(params.data.userId);
+  if (!(await ensureUser(params.data.userId))) {
+    res.status(404).json({ error: "Complete profile not found" });
+    return;
+  }
   const [record] = await db
     .insert(notificationSettingsTable)
     .values({ userId: params.data.userId, ...body.data })
@@ -245,7 +277,10 @@ router.put("/users/:userId/favorites", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid favorites" });
     return;
   }
-  await ensureUser(params.data.userId);
+  if (!(await ensureUser(params.data.userId))) {
+    res.status(404).json({ error: "Complete profile not found" });
+    return;
+  }
   const uniqueIds = [...new Set(body.data.garageIds)];
   if (uniqueIds.length) {
     const valid = await db
@@ -307,7 +342,10 @@ router.post("/users/:userId/support-requests", async (req, res): Promise<void> =
     res.status(400).json({ error: "Invalid support request" });
     return;
   }
-  await ensureUser(params.data.userId);
+  if (!(await ensureUser(params.data.userId))) {
+    res.status(404).json({ error: "Complete profile not found" });
+    return;
+  }
   const [record] = await db
     .insert(supportRequestsTable)
     .values({ userId: params.data.userId, ...body.data })

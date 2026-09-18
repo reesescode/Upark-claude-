@@ -17,6 +17,7 @@ import app from "../app";
 
 const deletedUserId = `profile-delete-${randomUUID()}`;
 const retainedUserId = `profile-retain-${randomUUID()}`;
+const sparseUserId = `profile-sparse-${randomUUID()}`;
 const garageId = "north-deck";
 const deleteAuthUser = vi.spyOn(clerkClient.users, "deleteUser");
 
@@ -95,6 +96,9 @@ describe("profile account deletion", () => {
     await db
       .delete(userProfilesTable)
       .where(eq(userProfilesTable.userId, retainedUserId));
+    await db
+      .delete(userProfilesTable)
+      .where(eq(userProfilesTable.userId, sparseUserId));
     await pool.end();
   });
 
@@ -173,5 +177,33 @@ describe("profile account deletion", () => {
       .get(`/api/users/${retainedUserId}/profile`)
       .set("x-test-user-id", "different-user")
       .expect(403);
+  });
+
+  it("does not create defaults for an incomplete placeholder profile", async () => {
+    await db.insert(userProfilesTable).values({
+      userId: sparseUserId,
+      authUserId: sparseUserId,
+      displayName: "Incomplete",
+    });
+
+    await request(app)
+      .put(`/api/users/${sparseUserId}/preferences`)
+      .set("x-test-user-id", sparseUserId)
+      .send({
+        defaultParkingPreference: "closest",
+        defaultCampus: "FGCU",
+        distanceUnits: "miles",
+        autoUseLocation: false,
+        favoriteGarageId: null,
+        locationServices: true,
+        anonymousDataCollection: false,
+      })
+      .expect(404);
+
+    const defaults = await db
+      .select()
+      .from(userPreferencesTable)
+      .where(eq(userPreferencesTable.userId, sparseUserId));
+    expect(defaults).toHaveLength(0);
   });
 });
