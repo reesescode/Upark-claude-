@@ -342,13 +342,22 @@ router.post("/users/:userId/support-requests", async (req, res): Promise<void> =
     res.status(400).json({ error: "Invalid support request" });
     return;
   }
+  const bugDescription = body.data.bugDescription?.trim() || null;
+  if (body.data.encounteredBug && !bugDescription) {
+    res.status(400).json({ error: "Please describe the bug you encountered" });
+    return;
+  }
   if (!(await ensureUser(params.data.userId))) {
     res.status(404).json({ error: "Complete profile not found" });
     return;
   }
   const [record] = await db
     .insert(supportRequestsTable)
-    .values({ userId: params.data.userId, ...body.data })
+    .values({
+      userId: params.data.userId,
+      ...body.data,
+      bugDescription: body.data.encounteredBug ? bugDescription : null,
+    })
     .returning();
   res.status(201).json(
     CreateSupportRequestResponse.parse({
@@ -356,6 +365,9 @@ router.post("/users/:userId/support-requests", async (req, res): Promise<void> =
       category: record.category,
       subject: record.subject,
       message: record.message,
+      encounteredBug: record.encounteredBug,
+      bugDescription: record.bugDescription,
+      wouldRecommend: record.wouldRecommend,
       status: record.status,
       createdAt: record.createdAt.toISOString(),
     }),

@@ -394,12 +394,17 @@ export const createSupportRequestBodySubjectMax = 160;
 export const createSupportRequestBodyMessageMin = 10;
 export const createSupportRequestBodyMessageMax = 4000;
 
+export const createSupportRequestBodyBugDescriptionMax = 2000;
+
 
 
 export const CreateSupportRequestBody = zod.object({
   "category": zod.string().min(1).max(createSupportRequestBodyCategoryMax),
   "subject": zod.string().min(createSupportRequestBodySubjectMin).max(createSupportRequestBodySubjectMax),
-  "message": zod.string().min(createSupportRequestBodyMessageMin).max(createSupportRequestBodyMessageMax)
+  "message": zod.string().min(createSupportRequestBodyMessageMin).max(createSupportRequestBodyMessageMax),
+  "encounteredBug": zod.boolean(),
+  "bugDescription": zod.string().min(1).max(createSupportRequestBodyBugDescriptionMax).nullish(),
+  "wouldRecommend": zod.enum(['yes', 'maybe', 'no'])
 })
 
 export const createSupportRequestResponseOneCategoryMax = 60;
@@ -410,12 +415,17 @@ export const createSupportRequestResponseOneSubjectMax = 160;
 export const createSupportRequestResponseOneMessageMin = 10;
 export const createSupportRequestResponseOneMessageMax = 4000;
 
+export const createSupportRequestResponseOneBugDescriptionMax = 2000;
+
 
 
 export const CreateSupportRequestResponse = zod.object({
   "category": zod.string().min(1).max(createSupportRequestResponseOneCategoryMax),
   "subject": zod.string().min(createSupportRequestResponseOneSubjectMin).max(createSupportRequestResponseOneSubjectMax),
-  "message": zod.string().min(createSupportRequestResponseOneMessageMin).max(createSupportRequestResponseOneMessageMax)
+  "message": zod.string().min(createSupportRequestResponseOneMessageMin).max(createSupportRequestResponseOneMessageMax),
+  "encounteredBug": zod.boolean(),
+  "bugDescription": zod.string().min(1).max(createSupportRequestResponseOneBugDescriptionMax).nullish(),
+  "wouldRecommend": zod.enum(['yes', 'maybe', 'no'])
 }).and(zod.object({
   "id": zod.number().int(),
   "status": zod.string(),

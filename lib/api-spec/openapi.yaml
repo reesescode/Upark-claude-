@@ -684,7 +684,16 @@ components:
           type: string
           minLength: 10
           maxLength: 4000
-      required: [category, subject, message]
+        encounteredBug:
+          type: boolean
+        bugDescription:
+          type: ["string", "null"]
+          minLength: 1
+          maxLength: 2000
+        wouldRecommend:
+          type: string
+          enum: [yes, maybe, no]
+      required: [category, subject, message, encounteredBug, wouldRecommend]
     SupportRequest:
       allOf:
         - $ref: "#/components/schemas/SupportRequestInput"

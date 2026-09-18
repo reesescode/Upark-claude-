@@ -254,6 +254,15 @@ export interface UserProfileData {
   parkingReports: ParkingReport[];
 }
 
+export type SupportRequestInputWouldRecommend = typeof SupportRequestInputWouldRecommend[keyof typeof SupportRequestInputWouldRecommend];
+
+
+export const SupportRequestInputWouldRecommend = {
+  yes: 'yes',
+  maybe: 'maybe',
+  no: 'no',
+} as const;
+
 export interface SupportRequestInput {
   /**
      * @minLength 1
@@ -270,6 +279,14 @@ export interface SupportRequestInput {
      * @maxLength 4000
      */
   message: string;
+  encounteredBug: boolean;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     * @nullable
+     */
+  bugDescription?: string | null;
+  wouldRecommend: SupportRequestInputWouldRecommend;
 }
 
 export type SupportRequest = SupportRequestInput & {

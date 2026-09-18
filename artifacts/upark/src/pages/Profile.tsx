@@ -733,27 +733,49 @@ function SupportScreen({ profile }: { profile: UserProfileData }) {
   const [category, setCategory] = useState("problem");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [encounteredBug, setEncounteredBug] = useState<boolean | null>(null);
+  const [bugDescription, setBugDescription] = useState("");
+  const [wouldRecommend, setWouldRecommend] = useState<"yes" | "maybe" | "no" | null>(null);
+  const [submissionMessage, setSubmissionMessage] = useState<string | null>(null);
   const submitSupport = useCreateSupportRequest();
   const { toast } = useToast();
 
-  const isValid = subject.trim().length >= 3 && message.trim().length >= 10;
+  const isValid =
+    subject.trim().length >= 3 &&
+    message.trim().length >= 10 &&
+    encounteredBug !== null &&
+    wouldRecommend !== null &&
+    (!encounteredBug || bugDescription.trim().length > 0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid) return;
+    if (!isValid || submitSupport.isPending) return;
 
+    setSubmissionMessage(null);
     submitSupport.mutate({
       userId: profile.userId,
-      data: { category, subject, message }
+      data: {
+        category,
+        subject,
+        message,
+        encounteredBug: encounteredBug!,
+        bugDescription: encounteredBug ? bugDescription.trim() : null,
+        wouldRecommend: wouldRecommend!,
+      }
     }, {
       onSuccess: () => {
-        toast({ title: "Message Sent", description: "Thanks for reaching out! We'll look into it." });
+        setSubmissionMessage("Feedback submitted successfully!");
+        toast({ title: "Feedback submitted successfully!", description: "Thanks for helping us improve UPARK." });
         setFormOpen(false);
         setSubject("");
         setMessage("");
+        setEncounteredBug(null);
+        setBugDescription("");
+        setWouldRecommend(null);
       },
       onError: () => {
-        toast({ title: "Error", description: "Failed to send message. Please try again.", variant: "destructive" });
+        setSubmissionMessage("We couldn't save your feedback. Please check your connection and try again.");
+        toast({ title: "Feedback not submitted", description: "The database request failed. Please try again.", variant: "destructive" });
       }
     });
   };
@@ -763,6 +785,15 @@ function SupportScreen({ profile }: { profile: UserProfileData }) {
 
       {!formOpen && (
         <>
+          {submissionMessage && (
+            <div
+              className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-bold text-green-800"
+              role="status"
+              data-testid="status-feedback-submission"
+            >
+              {submissionMessage}
+            </div>
+          )}
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
             <h3 className="text-xl font-black text-gray-900 mb-4">Frequently Asked Questions</h3>
             <Accordion type="single" collapsible className="w-full">
@@ -785,7 +816,7 @@ function SupportScreen({ profile }: { profile: UserProfileData }) {
             <Button
               variant="outline"
               className="h-16 rounded-2xl justify-start px-5 font-bold text-gray-700 bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-              onClick={() => { setCategory("problem"); setFormOpen(true); }}
+              onClick={() => { setCategory("problem"); setSubmissionMessage(null); setFormOpen(true); }}
               data-testid="button-report-problem"
             >
               <AlertTriangle className="mr-3 text-orange-500" size={20} />
@@ -794,7 +825,7 @@ function SupportScreen({ profile }: { profile: UserProfileData }) {
             <Button
               variant="outline"
               className="h-16 rounded-2xl justify-start px-5 font-bold text-gray-700 bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-              onClick={() => { setCategory("feedback"); setFormOpen(true); }}
+              onClick={() => { setCategory("feedback"); setSubmissionMessage(null); setFormOpen(true); }}
               data-testid="button-send-feedback"
             >
               <FileText className="mr-3 text-blue-500" size={20} />
@@ -803,7 +834,7 @@ function SupportScreen({ profile }: { profile: UserProfileData }) {
             <Button
               variant="outline"
               className="h-16 rounded-2xl justify-start px-5 font-bold text-gray-700 bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-              onClick={() => { setCategory("support"); setFormOpen(true); }}
+              onClick={() => { setCategory("support"); setSubmissionMessage(null); setFormOpen(true); }}
               data-testid="button-contact-support"
             >
               <CircleHelp className="mr-3 text-green-500" size={20} />
@@ -860,6 +891,78 @@ function SupportScreen({ profile }: { profile: UserProfileData }) {
                 required
               />
             </div>
+            <fieldset>
+              <legend className="text-sm font-bold text-gray-900 mb-2">
+                Did you encounter any bugs or features that did not work as expected?
+              </legend>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "No", value: false },
+                  { label: "Yes", value: true },
+                ].map((option) => (
+                  <button
+                    key={option.label}
+                    type="button"
+                    aria-pressed={encounteredBug === option.value}
+                    onClick={() => {
+                      setEncounteredBug(option.value);
+                      if (!option.value) setBugDescription("");
+                    }}
+                    className={`h-12 rounded-xl border-2 font-bold transition-colors ${
+                      encounteredBug === option.value
+                        ? "border-primary bg-blue-50 text-primary"
+                        : "border-gray-100 bg-gray-50 text-gray-700 hover:border-blue-200"
+                    }`}
+                    data-testid={`option-encountered-bug-${option.label.toLowerCase()}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            {encounteredBug && (
+              <div>
+                <Label className="text-sm font-bold text-gray-900 mb-2 block">
+                  Please describe what happened
+                </Label>
+                <Textarea
+                  value={bugDescription}
+                  onChange={e => setBugDescription(e.target.value)}
+                  placeholder="Tell us what you expected and what happened instead..."
+                  className="min-h-[100px] rounded-xl bg-gray-50 border-gray-100 focus-visible:ring-primary focus-visible:bg-white resize-none"
+                  data-testid="input-bug-description"
+                  required
+                />
+              </div>
+            )}
+            <fieldset>
+              <legend className="text-sm font-bold text-gray-900 mb-2">
+                Would you recommend UPARK to someone who has this problem/need?
+              </legend>
+              <div className="grid grid-cols-3 gap-3">
+                {(["yes", "maybe", "no"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={wouldRecommend === option}
+                    onClick={() => setWouldRecommend(option)}
+                    className={`h-12 rounded-xl border-2 font-bold capitalize transition-colors ${
+                      wouldRecommend === option
+                        ? "border-primary bg-blue-50 text-primary"
+                        : "border-gray-100 bg-gray-50 text-gray-700 hover:border-blue-200"
+                    }`}
+                    data-testid={`option-would-recommend-${option}`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            {submissionMessage && formOpen && (
+              <p className="text-sm font-semibold text-red-700" role="alert">
+                {submissionMessage}
+              </p>
+            )}
             <Button
               type="submit"
               className="w-full h-14 rounded-2xl font-bold text-base shadow-md gap-2 mt-2 hover-elevate"

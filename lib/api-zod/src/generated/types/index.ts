@@ -29,6 +29,7 @@ export * from './routingError';
 export * from './routingErrorCode';
 export * from './supportRequest';
 export * from './supportRequestInput';
+export * from './supportRequestInputWouldRecommend';
 export * from './userFavoritesInput';
 export * from './userPreferences';
 export * from './userPreferencesDefaultParkingPreference';

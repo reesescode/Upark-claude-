@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { SupportRequestInputWouldRecommend } from './supportRequestInputWouldRecommend';
 
 export interface SupportRequestInput {
   /**
@@ -22,4 +23,12 @@ export interface SupportRequestInput {
      * @maxLength 4000
      */
   message: string;
+  encounteredBug: boolean;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     * @nullable
+     */
+  bugDescription?: string | null;
+  wouldRecommend: SupportRequestInputWouldRecommend;
 }

@@ -68,6 +68,9 @@ async function createPopulatedProfile(userId: string) {
       category: "feedback",
       subject: "Deletion test",
       message: "This request verifies scoped account deletion.",
+      encounteredBug: true,
+      bugDescription: "The save action did not respond on the first attempt.",
+      wouldRecommend: "maybe",
     })
     .expect(201);
   await db.insert(parkingReportsTable).values({
@@ -167,6 +170,11 @@ describe("profile account deletion", () => {
         .where(eq(parkingReportsTable.userId, retainedUserId)),
     ]);
     expect(retainedRows.every((rows) => rows.length === 1)).toBe(true);
+    expect(retainedRows[4][0]).toMatchObject({
+      encounteredBug: true,
+      bugDescription: "The save action did not respond on the first attempt.",
+      wouldRecommend: "maybe",
+    });
   });
 
   it("rejects missing and mismatched authenticated identities", async () => {
@@ -177,6 +185,19 @@ describe("profile account deletion", () => {
       .get(`/api/users/${retainedUserId}/profile`)
       .set("x-test-user-id", "different-user")
       .expect(403);
+
+    await request(app)
+      .post(`/api/users/${retainedUserId}/support-requests`)
+      .set("x-test-user-id", retainedUserId)
+      .send({
+        category: "feedback",
+        subject: "Broken action",
+        message: "A feature did not work as expected.",
+        encounteredBug: true,
+        bugDescription: null,
+        wouldRecommend: "maybe",
+      })
+      .expect(400);
   });
 
   it("does not create defaults for an incomplete placeholder profile", async () => {
