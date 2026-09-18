@@ -12,6 +12,7 @@ import app from "../app";
 
 const garageId = `parking-test-${randomUUID()}`;
 const demoGarageId = `parking-demo-test-${randomUUID()}`;
+const legacyGarageCanonicalId = `fgcu-garage-4-${randomUUID()}`;
 
 describe("parking report routes", () => {
   beforeAll(async () => {
@@ -50,13 +51,36 @@ describe("parking report routes", () => {
         latitude: 0,
         longitude: 0,
       },
+      {
+        id: legacyGarageCanonicalId,
+        name: "FGCU Parking Garage 4",
+        shortName: "Garage 4",
+        address: "12101 FGCU Lake Parkway E",
+        type: "garage",
+        availableSpots: 100,
+        totalSpots: 200,
+        distanceMiles: 0.8,
+        driveTimeMinutes: 4,
+        walkingTimeMinutes: 8,
+        openHours: "24 hours",
+        price: "Free",
+        permits: ["student"],
+        latitude: 26.458721,
+        longitude: -81.773214,
+      },
     ]);
   });
 
   afterAll(async () => {
     await db
       .delete(garagesTable)
-      .where(inArray(garagesTable.id, [garageId, demoGarageId]));
+      .where(
+        inArray(garagesTable.id, [
+          garageId,
+          demoGarageId,
+          legacyGarageCanonicalId,
+        ]),
+      );
     await pool.end();
   });
 
@@ -172,6 +196,17 @@ describe("parking report routes", () => {
         availabilityStatus: "full",
       })
       .expect(404, { error: "Garage not found" });
+  });
+
+  it("resolves legacy garage IDs to the canonical FGCU destination", async () => {
+    const response = await request(app).get("/api/garages/garage-4").expect(200);
+
+    expect(response.body).toMatchObject({
+      id: legacyGarageCanonicalId,
+      shortName: "Garage 4",
+      latitude: 26.458721,
+      longitude: -81.773214,
+    });
   });
 
   it("returns 404 when listing reports for a missing garage", async () => {

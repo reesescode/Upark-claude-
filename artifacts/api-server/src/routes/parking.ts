@@ -24,11 +24,28 @@ const router: IRouter = Router();
 const REPORT_COOLDOWN_MS = 5 * 60 * 1_000;
 const LIVE_WINDOW_MS = 2 * 60 * 60 * 1_000;
 const STALE_AFTER_MS = 30 * 60 * 1_000;
+const LEGACY_GARAGE_ID_PATTERN = /^garage-?([1-4])$/i;
 
 type AvailabilityReport = Pick<
   ParkingReportRecord,
   "garageId" | "userId" | "availabilityStatus" | "createdAt"
 >;
+
+function getLegacyGarageNumber(garageId: string) {
+  return LEGACY_GARAGE_ID_PATTERN.exec(garageId)?.[1] ?? null;
+}
+
+function garageIdWhere(garageId: string) {
+  const legacyNumber = getLegacyGarageNumber(garageId);
+  if (!legacyNumber) return eq(garagesTable.id, garageId);
+
+  const garageLabel = `Garage ${legacyNumber}`;
+  return or(
+    eq(garagesTable.id, garageId),
+    ilike(garagesTable.name, `%${garageLabel}%`),
+    ilike(garagesTable.shortName, `%${garageLabel}%`),
+  );
+}
 
 const availabilityRatios: Record<
   ParkingReportRecord["availabilityStatus"],
@@ -222,10 +239,16 @@ router.get("/garages/:garageId", async (req, res): Promise<void> => {
     return;
   }
 
-  const [record] = await db
+  const matchingRecords = await db
     .select()
     .from(garagesTable)
-    .where(eq(garagesTable.id, params.data.garageId));
+    .where(garageIdWhere(params.data.garageId));
+  const record =
+    matchingRecords.find(
+      (candidate) =>
+        !getLegacyGarageNumber(candidate.id) ||
+        candidate.id === params.data.garageId && matchingRecords.length === 1,
+    ) ?? matchingRecords[0];
 
   if (!record) {
     res.status(404).json({ error: "Garage not found" });
