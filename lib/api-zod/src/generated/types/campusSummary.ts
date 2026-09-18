@@ -10,7 +10,11 @@ export interface CampusSummary {
   openSpots: number;
   totalSpots: number;
   garagesCount: number;
-  lastUpdatedAt: string;
+  /**
+     * Latest trusted observation time, or null when every location is using demo data.
+     * @nullable
+     */
+  lastUpdatedAt: string | null;
   liveGaragesCount: number;
   staleGaragesCount: number;
   demoGaragesCount: number;

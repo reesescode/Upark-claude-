@@ -2,3 +2,4 @@
 - [Workspace package installs](workspace-package-installs.md) — the package helper cannot target a pnpm workspace package with filters; update the package manifest, then sync once.
 - [Parking availability trust](parking-availability-trust.md) — never treat a client-provided student ID as verification or let unverified reports drive live estimates.
 - [Browser profile identity](browser-profile-identity.md) — keep profile data scoped to the browser-stored student ID without treating it as authentication.
+- [Parking Logix HTTP client](logix-feed-http-client.md) — poll the FGCU widget with Node HTTPS; built-in fetch timed out while HTTPS succeeded.

@@ -26,6 +26,9 @@ export const GarageStatus = {
   nearly_full: 'nearly_full',
 } as const;
 
+/**
+ * live_update values are ingested server-side from the official FGCU Parking Services source; public clients cannot submit them.
+ */
 export type GarageAvailabilitySource = typeof GarageAvailabilitySource[keyof typeof GarageAvailabilitySource];
 
 
@@ -64,6 +67,7 @@ export interface Garage {
   latitude: number;
   longitude: number;
   updatedAt: string;
+  /** live_update values are ingested server-side from the official FGCU Parking Services source; public clients cannot submit them. */
   availabilitySource: GarageAvailabilitySource;
   availabilityConfidence: GarageAvailabilityConfidence;
   availabilityIsStale: boolean;
@@ -117,7 +121,11 @@ export interface CampusSummary {
   openSpots: number;
   totalSpots: number;
   garagesCount: number;
-  lastUpdatedAt: string;
+  /**
+     * Latest trusted observation time, or null when every location is using demo data.
+     * @nullable
+     */
+  lastUpdatedAt: string | null;
   liveGaragesCount: number;
   staleGaragesCount: number;
   demoGaragesCount: number;

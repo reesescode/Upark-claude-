@@ -337,6 +337,7 @@ components:
         availabilitySource:
           type: string
           enum: [verified_reports, live_update, demo]
+          description: live_update values are ingested server-side from the official FGCU Parking Services source; public clients cannot submit them.
         availabilityConfidence:
           type: string
           enum: [high, medium, low, unavailable]
@@ -427,7 +428,8 @@ components:
         garagesCount:
           type: integer
         lastUpdatedAt:
-          type: string
+          type: ["string", "null"]
+          description: Latest trusted observation time, or null when every location is using demo data.
         liveGaragesCount:
           type: integer
         staleGaragesCount:

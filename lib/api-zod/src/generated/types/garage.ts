@@ -29,6 +29,7 @@ export interface Garage {
   latitude: number;
   longitude: number;
   updatedAt: string;
+  /** live_update values are ingested server-side from the official FGCU Parking Services source; public clients cannot submit them. */
   availabilitySource: GarageAvailabilitySource;
   availabilityConfidence: GarageAvailabilityConfidence;
   availabilityIsStale: boolean;

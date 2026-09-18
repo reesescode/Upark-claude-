@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * live_update values are ingested server-side from the official FGCU Parking Services source; public clients cannot submit them.
+ */
 export type GarageAvailabilitySource = typeof GarageAvailabilitySource[keyof typeof GarageAvailabilitySource];
 
 

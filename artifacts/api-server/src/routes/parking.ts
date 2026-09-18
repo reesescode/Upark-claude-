@@ -408,7 +408,7 @@ router.get("/campus/summary", async (_req, res): Promise<void> => {
         0,
       ),
       garagesCount: garages.length,
-      lastUpdatedAt: latestLiveUpdate ?? new Date().toISOString(),
+      lastUpdatedAt: latestLiveUpdate ?? null,
       liveGaragesCount: liveGarages.length,
       staleGaragesCount: liveGarages.filter(
         (garage) => garage.availabilityIsStale,
