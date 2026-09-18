@@ -38,9 +38,11 @@ export default function AccountSetup() {
   const save = useUpsertUserProfile();
 
   useEffect(() => {
-    if (user) {
-      setFirstName(user.firstName || "");
-      setLastName(user.lastName || "");
+    if (user?.firstName) {
+      setFirstName((current) => current || user.firstName || "");
+    }
+    if (user?.lastName) {
+      setLastName((current) => current || user.lastName || "");
     }
   }, [user]);
   useEffect(() => {

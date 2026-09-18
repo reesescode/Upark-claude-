@@ -104,8 +104,6 @@ export function SignUpPage() {
     setIsSubmitting(true);
     try {
       await signUp.create({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
         emailAddress: email.trim().toLowerCase(),
         password,
       });
