@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { isPasswordLengthValid, PASSWORD_LENGTH_ERROR } from "./password-length";
 
 type ClerkError = {
   errors?: Array<{
@@ -91,8 +92,8 @@ export function SignUpPage() {
       setError("Enter a valid email address.");
       return;
     }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (!isPasswordLengthValid(password)) {
+      setError(PASSWORD_LENGTH_ERROR);
       return;
     }
     if (password !== confirmPassword) {
@@ -227,7 +228,7 @@ export function SignUpPage() {
         <div className="space-y-2">
           <Label htmlFor="signup-password">Password</Label>
           <Input id="signup-password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} required data-testid="input-password" />
-          <p className="text-xs text-gray-500">Use at least 8 characters.</p>
+          <p className="text-xs text-gray-500">{PASSWORD_LENGTH_ERROR}</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="signup-confirm-password">Confirm password</Label>
