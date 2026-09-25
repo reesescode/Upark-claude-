@@ -298,7 +298,9 @@ export function SignInPage() {
         setStep("verify");
         return;
       }
-      if (result.status === "needs_second_factor") {
+      // Clerk's Device Trust check on a new device uses the same email-code
+      // second-factor methods but returns a different status.
+      if (result.status === "needs_second_factor" || result.status === "needs_client_trust") {
         const emailFactor = result.supportedSecondFactors?.find(
           (factor) => factor.strategy === "email_code",
         );
