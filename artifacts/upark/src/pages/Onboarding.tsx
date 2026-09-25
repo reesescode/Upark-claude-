@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, CircleAlert, Compass, MapPin, Navigation, Search } from "lucide-react";
-import { MapContainer, TileLayer } from "react-leaflet";
+import { AttributionControl, MapContainer, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +27,28 @@ const slides = [
   },
 ] as const;
 
+const CAMPUS_CENTER: [number, number] = [26.462647, -81.779026];
+
+function KeepCampusCentered() {
+  const map = useMap();
+
+  useEffect(() => {
+    const centerMap = () => {
+      map.invalidateSize({ pan: false });
+      map.setView(CAMPUS_CENTER, 16, { animate: false });
+    };
+    const frame = requestAnimationFrame(centerMap);
+    const observer = new ResizeObserver(centerMap);
+    observer.observe(map.getContainer());
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [map]);
+
+  return null;
+}
+
 function CampusMapIllustration({ step }: { step: number }) {
   return (
     <div
@@ -36,7 +58,7 @@ function CampusMapIllustration({ step }: { step: number }) {
     >
       <MapContainer
         key={step}
-        center={[26.462647, -81.779026]}
+        center={CAMPUS_CENTER}
         zoom={16}
         zoomControl={false}
         dragging={false}
@@ -44,11 +66,13 @@ function CampusMapIllustration({ step }: { step: number }) {
         doubleClickZoom={false}
         touchZoom={false}
         keyboard={false}
-        attributionControl
+        attributionControl={false}
         className="h-full w-full"
       >
+        <KeepCampusCentered />
+        <AttributionControl position="bottomright" prefix={false} />
         <TileLayer
-          attribution='&amp;copy; &lt;a href="https://www.openstreetmap.org/copyright"&gt;OpenStreetMap&lt;/a&gt; contributors'
+          attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
       </MapContainer>
@@ -60,7 +84,7 @@ function CampusMapIllustration({ step }: { step: number }) {
             <Search size={19} className="shrink-0 text-gray-400" aria-hidden="true" />
             <span className="text-sm font-medium text-gray-500">Search campus...</span>
           </div>
-          <div className="absolute left-1/2 top-[55%] z-[400] -translate-x-1/2 -translate-y-1/2">
+           <div className="absolute left-1/2 top-1/2 z-[400] -translate-x-1/2 -translate-y-1/2">
             <div className="flex h-[46px] w-[46px] items-center justify-center rounded-full border-[3px] border-white bg-primary text-primary-foreground shadow-xl">
               <MapPin size={22} aria-hidden="true" />
             </div>

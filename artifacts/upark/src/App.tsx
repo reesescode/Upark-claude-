@@ -24,7 +24,7 @@ import Profile from '@/pages/Profile';
 import AccountSetup from '@/pages/AccountSetup';
 import { SignInPage, SignUpPage } from '@/pages/Auth';
 import OnboardingRoute from '@/pages/OnboardingRoute';
-import { hasCompletedOnboarding } from '@/lib/onboarding';
+import { shouldShowOnboarding } from '@/lib/onboarding';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -57,7 +57,7 @@ function Router() {
   const needsTutorial =
     isLoaded &&
     !!user &&
-    !hasCompletedOnboarding(user.unsafeMetadata) &&
+    shouldShowOnboarding(user.createdAt, user.unsafeMetadata) &&
     location !== '/onboarding' &&
     location !== '/account-setup';
 
