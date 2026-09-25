@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef } from 'react';
-import { ClerkProvider, useClerk } from '@clerk/react';
+import { ClerkProvider, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -23,6 +23,8 @@ import Favorites from '@/pages/Favorites';
 import Profile from '@/pages/Profile';
 import AccountSetup from '@/pages/AccountSetup';
 import { SignInPage, SignUpPage } from '@/pages/Auth';
+import OnboardingRoute from '@/pages/OnboardingRoute';
+import { hasCompletedOnboarding } from '@/lib/onboarding';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -50,6 +52,22 @@ function AuthCacheInvalidator() {
 }
 
 function Router() {
+  const { user, isLoaded } = useUser();
+  const [location, setLocation] = useLocation();
+  const needsTutorial =
+    isLoaded &&
+    !!user &&
+    !hasCompletedOnboarding(user.unsafeMetadata) &&
+    location !== '/onboarding' &&
+    location !== '/account-setup';
+
+  useEffect(() => {
+    if (needsTutorial) setLocation('/onboarding', { replace: true });
+  }, [needsTutorial, setLocation]);
+
+  if (!isLoaded && !['/', '/sign-in', '/sign-up'].includes(location)) return null;
+  if (needsTutorial) return null;
+
   return (
     <RoutedErrorBoundary>
       <Switch>
@@ -57,6 +75,7 @@ function Router() {
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />
         <Route path="/account-setup" component={AccountSetup} />
+        <Route path="/onboarding" component={OnboardingRoute} />
         <Route path="/map" component={Map} />
         <Route path="/garages" component={Garages} />
         <Route path="/garages/:id" component={GarageDetails} />

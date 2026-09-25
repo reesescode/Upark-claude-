@@ -276,6 +276,7 @@ function ProfileDetailsEditor({ profile }: { profile: UserProfileData }) {
 // ---------------------------------------------------------------------------
 
 function PreferencesScreen({ profile }: { profile: UserProfileData }) {
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const updatePrefs = useUpdateUserPreferences();
   const { data: garages } = useListGarages();
@@ -406,6 +407,14 @@ function PreferencesScreen({ profile }: { profile: UserProfileData }) {
             </SelectContent>
           </Select>
         </div>
+      </div>
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <MenuItem
+          icon={<CircleHelp className="text-gray-500" />}
+          label="View Tutorial"
+          onClick={() => setLocation("/onboarding")}
+          testId="button-view-tutorial"
+        />
       </div>
     </div>
   );
