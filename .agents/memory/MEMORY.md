@@ -8,3 +8,4 @@
 - [Clerk signup profile fields](clerk-signup-profile-fields.md) — this managed Clerk flow accepts auth fields only; persist names and university after verification.
 - [Production profile ID rollout](production-profile-id-rollout.md) — add sequence-backed profile IDs as nullable first; tighten only after production rows are backfilled.
 - [Onboarding eligibility](onboarding-eligibility.md) — keep the original new-account cutoff fixed; an absent completion marker alone does not identify a new user.
+- [Shared database tests](shared-database-tests.md) — parallel suites share PostgreSQL; run campus-total assertions without file parallelism.

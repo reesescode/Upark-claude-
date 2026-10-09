@@ -54,9 +54,9 @@ export default function Garages() {
       if (sort === "nearest") {
         return a.distanceMiles - b.distanceMiles;
       } else if (sort === "most_available") {
-        return b.availableSpots - a.availableSpots;
+        return (b.availableSpots ?? -1) - (a.availableSpots ?? -1);
       } else if (sort === "least_full") {
-        return a.occupancyPercent - b.occupancyPercent;
+        return (a.occupancyPercent ?? 101) - (b.occupancyPercent ?? 101);
       }
       return 0;
     });

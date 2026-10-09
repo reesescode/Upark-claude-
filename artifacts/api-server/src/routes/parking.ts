@@ -30,6 +30,7 @@ import {
 } from "../lib/parking-estimator";
 
 import { authenticatedReporter, campusDay, distanceMeters, locationError, REPORT_EXPIRY_MS, similarStatus } from "../lib/parking-rewards";
+import { isReportOnlyLot } from "../lib/report-only-lots";
 const router: IRouter = Router();
 const REPORT_COOLDOWN_MS = 5 * 60 * 1_000;
 const LEGACY_GARAGE_ID_PATTERN = /^garage-?([1-4])$/i;
@@ -60,6 +61,26 @@ function toGarage(
   >[] = [],
   now = new Date(),
 ) {
+  if (isReportOnlyLot(record)) {
+    const activeReports = reports.filter((report) =>
+      report.createdAt.getTime() <= now.getTime() && report.createdAt.getTime() > now.getTime() - REPORT_EXPIRY_MS,
+    ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const latest = activeReports[0];
+    return {
+      ...record,
+      type: record.type === "lot" ? ("lot" as const) : ("garage" as const),
+      availableSpots: null,
+      occupancyPercent: null,
+      status: "unknown" as const,
+      availabilitySource: "user_reports_only" as const,
+      availabilityConfidence: "unavailable" as const,
+      availabilityIsStale: false,
+      availabilityReportCount: activeReports.length,
+      availabilityUpdatedAt: latest?.createdAt.toISOString() ?? null,
+      latestReportStatus: latest?.availabilityStatus ?? null,
+      updatedAt: record.updatedAt.toISOString(),
+    };
+  }
   const availability = estimateGarageAvailability(
     record,
     reports,
@@ -168,9 +189,9 @@ router.get("/garages", async (req, res): Promise<void> => {
   const garages = await getGaragesWithAvailability(where);
   garages.sort((a, b) =>
     query.data.sort === "most_available"
-      ? b.availableSpots - a.availableSpots
+      ? (b.availableSpots ?? -1) - (a.availableSpots ?? -1)
       : query.data.sort === "least_full"
-        ? a.occupancyPercent - b.occupancyPercent
+        ? (a.occupancyPercent ?? 101) - (b.occupancyPercent ?? 101)
         : a.distanceMiles - b.distanceMiles,
   );
   res.json(ListGaragesResponse.parse(garages));
@@ -393,7 +414,7 @@ router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
 router.get("/campus/summary", async (_req, res): Promise<void> => {
   const garages = await getGaragesWithAvailability();
   const liveGarages = garages.filter(
-    (garage) => garage.availabilitySource !== "demo",
+    (garage) => garage.availabilitySource !== "demo" && garage.availabilitySource !== "user_reports_only",
   );
   const latestLiveUpdate = liveGarages
     .map((garage) => garage.availabilityUpdatedAt)
@@ -403,11 +424,11 @@ router.get("/campus/summary", async (_req, res): Promise<void> => {
   res.json(
     GetCampusSummaryResponse.parse({
       openSpots: garages.reduce(
-        (total, garage) => total + garage.availableSpots,
+        (total, garage) => total + (garage.availableSpots ?? 0),
         0,
       ),
       totalSpots: garages.reduce(
-        (total, garage) => total + garage.totalSpots,
+        (total, garage) => total + (garage.availabilitySource === "user_reports_only" ? 0 : garage.totalSpots),
         0,
       ),
       garagesCount: garages.length,

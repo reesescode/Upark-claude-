@@ -11,6 +11,7 @@ export * from './drivingRoute';
 export * from './garage';
 export * from './garageAvailabilityConfidence';
 export * from './garageAvailabilitySource';
+export * from './garageLatestReportStatus';
 export * from './garageStatus';
 export * from './garageType';
 export * from './healthStatus';

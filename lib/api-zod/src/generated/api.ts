@@ -34,24 +34,25 @@ export const ListGaragesResponseItem = zod.object({
   "shortName": zod.string(),
   "address": zod.string(),
   "type": zod.enum(['garage', 'lot']),
-  "availableSpots": zod.number().int(),
+  "availableSpots": zod.number().int().nullable(),
   "totalSpots": zod.number().int(),
-  "occupancyPercent": zod.number().int(),
+  "occupancyPercent": zod.number().int().nullable(),
   "distanceMiles": zod.number(),
   "driveTimeMinutes": zod.number().int(),
   "walkingTimeMinutes": zod.number().int(),
-  "status": zod.enum(['open', 'filling_up', 'nearly_full']),
+  "status": zod.enum(['open', 'filling_up', 'nearly_full', 'unknown']),
   "openHours": zod.string(),
   "price": zod.string(),
   "permits": zod.array(zod.string()),
   "latitude": zod.number(),
   "longitude": zod.number(),
   "updatedAt": zod.string(),
-  "availabilitySource": zod.enum(['verified_reports', 'live_update', 'demo']).describe('live_update values are ingested server-side from the official FGCU Parking Services source; public clients cannot submit them.'),
+  "availabilitySource": zod.enum(['verified_reports', 'live_update', 'demo', 'user_reports_only']).describe('live_update values are ingested server-side from the official FGCU Parking Services source; public clients cannot submit them.'),
   "availabilityConfidence": zod.enum(['high', 'medium', 'low', 'unavailable']),
   "availabilityIsStale": zod.boolean(),
   "availabilityReportCount": zod.number().int(),
-  "availabilityUpdatedAt": zod.string().nullable()
+  "availabilityUpdatedAt": zod.string().nullable(),
+  "latestReportStatus": zod.union([zod.literal('plenty_spots'),zod.literal('filling_up'),zod.literal('almost_full'),zod.literal('full'),zod.literal(null)]).nullish().describe('Latest active verified student report; never a live space count.')
 })
 export const ListGaragesResponse = zod.array(ListGaragesResponseItem)
 
@@ -69,24 +70,25 @@ export const GetGarageResponse = zod.object({
   "shortName": zod.string(),
   "address": zod.string(),
   "type": zod.enum(['garage', 'lot']),
-  "availableSpots": zod.number().int(),
+  "availableSpots": zod.number().int().nullable(),
   "totalSpots": zod.number().int(),
-  "occupancyPercent": zod.number().int(),
+  "occupancyPercent": zod.number().int().nullable(),
   "distanceMiles": zod.number(),
   "driveTimeMinutes": zod.number().int(),
   "walkingTimeMinutes": zod.number().int(),
-  "status": zod.enum(['open', 'filling_up', 'nearly_full']),
+  "status": zod.enum(['open', 'filling_up', 'nearly_full', 'unknown']),
   "openHours": zod.string(),
   "price": zod.string(),
   "permits": zod.array(zod.string()),
   "latitude": zod.number(),
   "longitude": zod.number(),
   "updatedAt": zod.string(),
-  "availabilitySource": zod.enum(['verified_reports', 'live_update', 'demo']).describe('live_update values are ingested server-side from the official FGCU Parking Services source; public clients cannot submit them.'),
+  "availabilitySource": zod.enum(['verified_reports', 'live_update', 'demo', 'user_reports_only']).describe('live_update values are ingested server-side from the official FGCU Parking Services source; public clients cannot submit them.'),
   "availabilityConfidence": zod.enum(['high', 'medium', 'low', 'unavailable']),
   "availabilityIsStale": zod.boolean(),
   "availabilityReportCount": zod.number().int(),
-  "availabilityUpdatedAt": zod.string().nullable()
+  "availabilityUpdatedAt": zod.string().nullable(),
+  "latestReportStatus": zod.union([zod.literal('plenty_spots'),zod.literal('filling_up'),zod.literal('almost_full'),zod.literal('full'),zod.literal(null)]).nullish().describe('Latest active verified student report; never a live space count.')
 })
 
 

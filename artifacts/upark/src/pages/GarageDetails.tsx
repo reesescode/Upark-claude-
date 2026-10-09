@@ -31,7 +31,7 @@ import { ChevronLeft, Navigation, Heart, Clock, DollarSign, Info, MapPin, Map as
 import { getStatusColor, getStatusText, getStatusColorSolid } from "@/lib/garage-utils";
 import { useFavorites, useUser } from "@/hooks/use-local-data";
 import { cn } from "@/lib/utils";
-import { getAvailabilityLabel } from "@/lib/availability-utils";
+import { getAvailabilityLabel, getLatestReportLabel, isUserReportsOnly } from "@/lib/availability-utils";
 import { getReportLocation } from "@/lib/report-location";
 
 const reportOptions: Array<{
@@ -236,7 +236,7 @@ export default function GarageDetails() {
         {/* Title overlay */}
         <div className="absolute bottom-4 left-4 right-4 text-white z-10">
           <div className={cn("inline-block px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider mb-2", getStatusColorSolid(garage.status), "text-white")}>
-            {getStatusText(garage.status)}
+            {isUserReportsOnly(garage) ? "User Reports Only" : getStatusText(garage.status)}
           </div>
           <h1 className="text-3xl font-black tracking-tight leading-tight">{garage.name}</h1>
           <p className="text-white/80 text-sm flex items-center gap-1.5 mt-1 font-medium">
@@ -248,6 +248,15 @@ export default function GarageDetails() {
       <div className="px-4 py-6 -mt-4 relative z-20 space-y-6">
         {/* Main Stats Card */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 relative">
+          {isUserReportsOnly(garage) ? (
+            <div>
+              <p className="text-sm font-bold text-gray-500">User Reports Only</p>
+              <p className="text-2xl font-black text-gray-700 mt-2">{getLatestReportLabel(garage)}</p>
+              <p className="mt-3 text-sm text-gray-500">{getAvailabilityLabel(garage)}</p>
+              <p className="mt-2 text-xs text-gray-500">Student updates expire after 30 minutes. Live space counts are not available for this lot.</p>
+            </div>
+          ) : (
+          <>
           <div className="flex justify-between items-end">
             <div>
               <p className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Availability</p>
@@ -266,7 +275,7 @@ export default function GarageDetails() {
           <div className="w-full h-3 bg-gray-100 rounded-full mt-6 overflow-hidden">
             <div 
               className={cn("h-full rounded-full transition-all duration-1000 ease-out", getStatusColorSolid(garage.status))}
-              style={{ width: `${Math.min(garage.occupancyPercent, 100)}%` }}
+              style={{ width: `${Math.min(garage.occupancyPercent ?? 0, 100)}%` }}
             />
           </div>
           <p
@@ -281,6 +290,8 @@ export default function GarageDetails() {
           >
             {getAvailabilityLabel(garage)}
           </p>
+          </>
+          )}
         </div>
 
         {reportSuccess && (

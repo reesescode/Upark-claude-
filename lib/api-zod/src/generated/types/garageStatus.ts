@@ -13,4 +13,5 @@ export const GarageStatus = {
   open: 'open',
   filling_up: 'filling_up',
   nearly_full: 'nearly_full',
+  unknown: 'unknown',
 } as const;

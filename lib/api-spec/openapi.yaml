@@ -441,11 +441,11 @@ components:
           type: string
           enum: [garage, lot]
         availableSpots:
-          type: integer
+          type: ["integer", "null"]
         totalSpots:
           type: integer
         occupancyPercent:
-          type: integer
+          type: ["integer", "null"]
         distanceMiles:
           type: number
         driveTimeMinutes:
@@ -454,7 +454,7 @@ components:
           type: integer
         status:
           type: string
-          enum: [open, filling_up, nearly_full]
+          enum: [open, filling_up, nearly_full, unknown]
         openHours:
           type: string
         price:
@@ -471,7 +471,7 @@ components:
           type: string
         availabilitySource:
           type: string
-          enum: [verified_reports, live_update, demo]
+          enum: [verified_reports, live_update, demo, user_reports_only]
           description: live_update values are ingested server-side from the official FGCU Parking Services source; public clients cannot submit them.
         availabilityConfidence:
           type: string
@@ -482,6 +482,10 @@ components:
           type: integer
         availabilityUpdatedAt:
           type: ["string", "null"]
+        latestReportStatus:
+          type: ["string", "null"]
+          enum: [plenty_spots, filling_up, almost_full, full, null]
+          description: Latest active verified student report; never a live space count.
       required:
         - id
         - name

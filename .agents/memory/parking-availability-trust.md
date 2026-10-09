@@ -14,3 +14,9 @@ Do not award rewards retroactively for legacy reports: their proximity was never
 **Why:** Retroactive credit would treat missing verification as proof, and resetting reward eligibility when history is cleared would let users bypass the daily limit.
 
 **How to apply:** Keep eligibility evidence separate from optional visible history. Device GPS is useful proximity evidence but is not spoof-proof; never describe browser location validation as guaranteed physical presence.
+
+FGCU lots P6, P7, and P8 must remain “User Reports Only,” not live availability—even when a recent verified student report exists. Keep them visible and navigable, but exclude them from live counts and space totals.
+
+**Why:** The product explicitly distinguishes student-reported lot conditions from the other garages' live parking system; a reported status is not a live space count.
+
+**How to apply:** Preserve reporting and navigation for these lots. Show the latest active student status and its age, or “No Recent Reports,” using neutral styling without estimated counts.

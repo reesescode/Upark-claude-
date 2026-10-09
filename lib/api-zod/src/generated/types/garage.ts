@@ -7,6 +7,7 @@
  */
 import type { GarageAvailabilityConfidence } from './garageAvailabilityConfidence';
 import type { GarageAvailabilitySource } from './garageAvailabilitySource';
+import type { GarageLatestReportStatus } from './garageLatestReportStatus';
 import type { GarageStatus } from './garageStatus';
 import type { GarageType } from './garageType';
 
@@ -16,9 +17,11 @@ export interface Garage {
   shortName: string;
   address: string;
   type: GarageType;
-  availableSpots: number;
+  /** @nullable */
+  availableSpots: number | null;
   totalSpots: number;
-  occupancyPercent: number;
+  /** @nullable */
+  occupancyPercent: number | null;
   distanceMiles: number;
   driveTimeMinutes: number;
   walkingTimeMinutes: number;
@@ -36,4 +39,9 @@ export interface Garage {
   availabilityReportCount: number;
   /** @nullable */
   availabilityUpdatedAt: string | null;
+  /**
+     * Latest active verified student report; never a live space count.
+     * @nullable
+     */
+  latestReportStatus?: GarageLatestReportStatus;
 }

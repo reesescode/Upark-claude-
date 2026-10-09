@@ -67,6 +67,7 @@ export const GarageStatus = {
   open: 'open',
   filling_up: 'filling_up',
   nearly_full: 'nearly_full',
+  unknown: 'unknown',
 } as const;
 
 /**
@@ -79,6 +80,7 @@ export const GarageAvailabilitySource = {
   verified_reports: 'verified_reports',
   live_update: 'live_update',
   demo: 'demo',
+  user_reports_only: 'user_reports_only',
 } as const;
 
 export type GarageAvailabilityConfidence = typeof GarageAvailabilityConfidence[keyof typeof GarageAvailabilityConfidence];
@@ -91,15 +93,31 @@ export const GarageAvailabilityConfidence = {
   unavailable: 'unavailable',
 } as const;
 
+/**
+ * Latest active verified student report; never a live space count.
+ * @nullable
+ */
+export type GarageLatestReportStatus = typeof GarageLatestReportStatus[keyof typeof GarageLatestReportStatus] | null;
+
+
+export const GarageLatestReportStatus = {
+  plenty_spots: 'plenty_spots',
+  filling_up: 'filling_up',
+  almost_full: 'almost_full',
+  full: 'full',
+} as const;
+
 export interface Garage {
   id: string;
   name: string;
   shortName: string;
   address: string;
   type: GarageType;
-  availableSpots: number;
+  /** @nullable */
+  availableSpots: number | null;
   totalSpots: number;
-  occupancyPercent: number;
+  /** @nullable */
+  occupancyPercent: number | null;
   distanceMiles: number;
   driveTimeMinutes: number;
   walkingTimeMinutes: number;
@@ -117,6 +135,11 @@ export interface Garage {
   availabilityReportCount: number;
   /** @nullable */
   availabilityUpdatedAt: string | null;
+  /**
+     * Latest active verified student report; never a live space count.
+     * @nullable
+     */
+  latestReportStatus?: GarageLatestReportStatus;
 }
 
 export type ParkingReportAvailabilityStatus = typeof ParkingReportAvailabilityStatus[keyof typeof ParkingReportAvailabilityStatus];

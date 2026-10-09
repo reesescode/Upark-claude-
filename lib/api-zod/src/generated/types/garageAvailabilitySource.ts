@@ -16,4 +16,5 @@ export const GarageAvailabilitySource = {
   verified_reports: 'verified_reports',
   live_update: 'live_update',
   demo: 'demo',
+  user_reports_only: 'user_reports_only',
 } as const;

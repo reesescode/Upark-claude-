@@ -19,11 +19,16 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { getAvailabilityLabel } from "@/lib/availability-utils";
+import { getAvailabilityLabel, getLatestReportLabel, isUserReportsOnly } from "@/lib/availability-utils";
 
 const CAMPUS_CENTER: [number, number] = [26.462647, -81.779026];
 
-function getGarageStatusInfo(occupancyPercent: number) {
+function getGarageStatusInfo(occupancyPercent: number | null) {
+  if (occupancyPercent === null) return {
+    text: "User Reports Only",
+    markerBg: "bg-gray-400 text-white",
+    pillBg: "bg-gray-100 text-gray-600",
+  };
   if (occupancyPercent < 70) return {
     text: "Plenty of parking",
     markerBg: "bg-success text-success-foreground",
@@ -67,7 +72,9 @@ function GarageMarker({
   isSelected: boolean;
   onClick: () => void;
 }) {
-  const accessibleName = `${garage.name}: ${garage.availableSpots} spaces available, ${getGarageStatusInfo(garage.occupancyPercent).text}`;
+  const accessibleName = isUserReportsOnly(garage)
+    ? `${garage.name}: User Reports Only, ${getAvailabilityLabel(garage)}`
+    : `${garage.name}: ${garage.availableSpots} spaces available, ${getGarageStatusInfo(garage.occupancyPercent).text}`;
   const icon = useMemo(() => {
     const status = getGarageStatusInfo(garage.occupancyPercent);
     const scaleClass = isSelected ? 'scale-110 shadow-xl' : 'scale-100 shadow-md';
@@ -76,7 +83,7 @@ function GarageMarker({
     const html = `
       <div class="relative group transition-all duration-300 pointer-events-auto">
         <div class="w-[42px] h-[42px] rounded-full flex flex-col items-center justify-center ${borderClass} ${scaleClass} ${status.markerBg} z-10 relative">
-          <span class="font-black text-[15px] leading-none tracking-tight">${garage.availableSpots}</span>
+          <span class="font-black text-[15px] leading-none tracking-tight">${isUserReportsOnly(garage) ? garage.shortName.match(/P[678]/i)?.[0] ?? "P" : garage.availableSpots}</span>
         </div>
         <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white transform rotate-45 z-0 shadow-sm ${isSelected ? 'scale-125' : ''}"></div>
       </div>
@@ -100,7 +107,7 @@ function GarageMarker({
         click: onClick,
       }}
       alt={accessibleName}
-      title={`${garage.name}: ${garage.availableSpots} spaces available`}
+      title={accessibleName}
       zIndexOffset={isSelected ? 1000 : 0}
     />
   );
@@ -360,18 +367,27 @@ export default function CampusMap() {
               </div>
 
               <div className="flex gap-3 mb-4">
+                {isUserReportsOnly(selectedGarage) ? (
+                  <div className="w-full bg-gray-50 rounded-2xl p-3 border border-gray-100 text-center">
+                    <p className="font-bold text-gray-600">{getLatestReportLabel(selectedGarage)}</p>
+                    <p className="mt-1 text-xs text-gray-500">{getAvailabilityLabel(selectedGarage)}</p>
+                  </div>
+                ) : (
+                <>
                 <div className="flex-1 bg-gray-50 rounded-2xl p-3 flex flex-col items-center justify-center border border-gray-100/50">
                   <span className="text-2xl font-black text-gray-900 leading-none mb-1">{selectedGarage.availableSpots}</span>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Available</span>
                 </div>
                 <div className="flex-1 bg-gray-50 rounded-2xl p-3 flex flex-col items-center justify-center border border-gray-100/50">
-                  <span className="text-2xl font-black text-gray-900 leading-none mb-1">{Math.round(selectedGarage.occupancyPercent)}%</span>
+                  <span className="text-2xl font-black text-gray-900 leading-none mb-1">{Math.round(selectedGarage.occupancyPercent ?? 0)}%</span>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Full</span>
                 </div>
                 <div className="flex-1 bg-gray-50 rounded-2xl p-3 flex flex-col items-center justify-center border border-gray-100/50">
                   <span className="text-2xl font-black text-gray-900 leading-none mb-1">{selectedGarage.totalSpots}</span>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Capacity</span>
                 </div>
+                </>
+                )}
               </div>
 
               <div className={cn("w-full py-2.5 px-3 rounded-xl flex items-center justify-center font-bold text-sm mb-5", statusInfo.pillBg)}>

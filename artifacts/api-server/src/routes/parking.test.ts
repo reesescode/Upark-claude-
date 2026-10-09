@@ -13,6 +13,7 @@ import app from "../app";
 
 const garageId = `parking-test-${randomUUID()}`;
 const demoGarageId = `parking-demo-test-${randomUUID()}`;
+const reportOnlyGarageId = `parking-report-only-test-${randomUUID()}`;
 const testUsers: string[] = [];
 const apiTestUser = `api-test-user-${randomUUID()}`;
 async function submitReport(userId: string, availabilityStatus: string, targetGarage = garageId) {
@@ -97,6 +98,24 @@ describe("parking report routes", () => {
         longitude: 0,
       },
       {
+        id: reportOnlyGarageId,
+        name: "Parking Lot P6 Test",
+        shortName: "P6",
+        address: "3 Test Way",
+        type: "lot",
+        availableSpots: 500,
+        availabilityUpdatedAt: new Date(),
+        totalSpots: 1000,
+        distanceMiles: 0.6,
+        driveTimeMinutes: 3,
+        walkingTimeMinutes: 6,
+        openHours: "24 hours",
+        price: "Free",
+        permits: ["student"],
+        latitude: 0,
+        longitude: 0,
+      },
+      {
         id: demoGarageId,
         name: "Demo Availability Test Garage",
         shortName: "Demo Test",
@@ -123,6 +142,7 @@ describe("parking report routes", () => {
         inArray(garagesTable.id, [
           garageId,
           demoGarageId,
+          reportOnlyGarageId,
         ]),
       );
     if (testUsers.length) await db.delete(userProfilesTable).where(inArray(userProfilesTable.userId, testUsers));
@@ -262,6 +282,49 @@ describe("parking report routes", () => {
     await request(app)
       .get(`/api/garages/missing-${randomUUID()}/reports`)
       .expect(404, { error: "Garage not found" });
+  });
+
+  it("keeps P6/P7/P8 visible without counts or live classification", async () => {
+    const response = await request(app).get("/api/garages").expect(200);
+    for (const id of ["stadium-lot", "east-lot", "fgcu-lot-8", reportOnlyGarageId]) {
+      const lot = response.body.find((garage: { id: string }) => garage.id === id);
+      expect(lot).toMatchObject({
+        availabilitySource: "user_reports_only",
+        availableSpots: null, occupancyPercent: null, status: "unknown",
+      });
+      expect(lot.latitude).toEqual(expect.any(Number));
+      expect(lot.longitude).toEqual(expect.any(Number));
+    }
+    const detail = await request(app).get(`/api/garages/${reportOnlyGarageId}`).expect(200);
+    expect(detail.body.latestReportStatus).toBeNull();
+    expect(detail.body.availabilityUpdatedAt).toBeNull();
+  });
+
+  it("excludes reports-only lots from space totals and live counters", async () => {
+    const list = (await request(app).get("/api/garages").expect(200)).body;
+    const summary = (await request(app).get("/api/campus/summary").expect(200)).body;
+    const counted = list.filter((garage: { availabilitySource: string }) => garage.availabilitySource !== "user_reports_only");
+    expect(summary.openSpots).toBe(counted.reduce((sum: number, g: { availableSpots: number }) => sum + g.availableSpots, 0));
+    expect(summary.totalSpots).toBe(counted.reduce((sum: number, g: { totalSpots: number }) => sum + g.totalSpots, 0));
+    expect(summary.liveGaragesCount).toBe(counted.filter((g: { availabilitySource: string }) => g.availabilitySource !== "demo").length);
+    expect(summary.garagesCount).toBe(list.length);
+  });
+
+  it("keeps lot reporting active and shows the latest active report without estimating spaces", async () => {
+    await db.insert(parkingReportsTable).values({
+      userId: "expired-lot-report", garageId: reportOnlyGarageId, availabilityStatus: "full",
+      isVerified: true, createdAt: new Date(Date.now() - 31 * 60_000),
+    });
+    expect((await request(app).get(`/api/garages/${reportOnlyGarageId}`)).body.latestReportStatus).toBeNull();
+    const response = await submitReport(`lot-reporter-${randomUUID()}`, "filling_up", reportOnlyGarageId);
+    expect(response.status).toBe(201);
+    const lot = (await request(app).get(`/api/garages/${reportOnlyGarageId}`)).body;
+    expect(lot).toMatchObject({
+      latestReportStatus: "filling_up", availabilityUpdatedAt: response.body.createdAt,
+      availabilitySource: "user_reports_only", availableSpots: null, occupancyPercent: null,
+    });
+    const history = (await request(app).get(`/api/garages/${reportOnlyGarageId}/reports`)).body;
+    expect(history).toHaveLength(1);
   });
 
   it("lists reports newest first, using id as a stable timestamp tie-breaker", async () => {
