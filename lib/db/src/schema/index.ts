@@ -22,3 +22,4 @@ export * from "./parking-observations";
 export * from "./parking-reports";
 export * from "./user-profile";
 export * from "./parking-contributions";
+export * from "./parking-note-flags";

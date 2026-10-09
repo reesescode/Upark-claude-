@@ -9,6 +9,8 @@ import type { ParkingReportInputAvailabilityStatus } from './parkingReportInputA
 import type { ReportLocation } from './reportLocation';
 
 export interface ParkingReportInput {
+  /** @maxLength 100 */
+  note?: string;
   location: ReportLocation;
   availabilityStatus: ParkingReportInputAvailabilityStatus;
 }

@@ -8,6 +8,12 @@
 import type { ParkingReportAvailabilityStatus } from './parkingReportAvailabilityStatus';
 
 export interface ParkingReport {
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  note?: string | null;
+  noteEmergency?: boolean;
   id: number;
   garageId: string;
   availabilityStatus: ParkingReportAvailabilityStatus;

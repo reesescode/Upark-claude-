@@ -28,6 +28,7 @@ export const parkingReportsTable = pgTable(
       "availability_status",
     ).notNull(),
     isVerified: boolean("is_verified").notNull().default(false),
+    note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

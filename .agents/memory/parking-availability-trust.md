@@ -20,3 +20,9 @@ FGCU lots P6, P7, and P8 must remain “User Reports Only,” not live availabil
 **Why:** The product explicitly distinguishes student-reported lot conditions from the other garages' live parking system; a reported status is not a live space count.
 
 **How to apply:** Preserve reporting and navigation for these lots. Show the latest active student status and its age, or “No Recent Reports,” using neutral styling without estimated counts.
+
+Verification of a parking reporter's account and location does not verify the content of their free-text note. Notes must remain labeled “User Reported”; emergency mentions need an explicit unverified-information warning and a 911/campus-police reminder.
+
+**Why:** The product allows student observations, not official university announcements or verified emergency alerts.
+
+**How to apply:** Keep note claims separate from identity/proximity verification. Store flags as review evidence; a user's flag alone must not change parking availability, delete a report, or revoke points.

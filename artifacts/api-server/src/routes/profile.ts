@@ -119,6 +119,7 @@ function toParkingReport(record: typeof parkingReportsTable.$inferSelect) {
     id: record.id,
     garageId: record.garageId,
     availabilityStatus: record.availabilityStatus,
+    note: record.note,
     createdAt: record.createdAt.toISOString(),
     isVerified: record.isVerified,
   };

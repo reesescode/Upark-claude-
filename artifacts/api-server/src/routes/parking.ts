@@ -5,6 +5,7 @@ import {
   garagesTable,
   parkingObservationsTable,
   parkingReportsTable,
+  parkingNoteFlagsTable,
   parkingContributionsTable,
   userProfilesTable,
   type GarageRecord,
@@ -14,6 +15,8 @@ import {
   CreateParkingReportBody,
   CreateParkingReportParams,
   CreateParkingReportResponse,
+  FlagParkingReportNoteParams,
+  FlagParkingReportNoteResponse,
   GetCampusSummaryResponse,
   GetGarageParams,
   GetGarageResponse,
@@ -31,6 +34,7 @@ import {
 
 import { authenticatedReporter, campusDay, distanceMeters, locationError, REPORT_EXPIRY_MS, similarStatus } from "../lib/parking-rewards";
 import { isReportOnlyLot } from "../lib/report-only-lots";
+import { moderateParkingNote, noteMentionsEmergency } from "../lib/parking-note-moderation";
 const router: IRouter = Router();
 const REPORT_COOLDOWN_MS = 5 * 60 * 1_000;
 const LEGACY_GARAGE_ID_PATTERN = /^garage-?([1-4])$/i;
@@ -115,6 +119,7 @@ function toParkingReport(record: ParkingReportRecord) {
   return {
     ...record,
     isVerified: record.isVerified,
+    noteEmergency: noteMentionsEmergency(record.note),
     createdAt: record.createdAt.toISOString(),
   };
 }
@@ -298,7 +303,13 @@ router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
     return;
   }
   if (!body.success) {
-    res.status(400).json({ error: body.error.message });
+    res.status(400).json({ error: body.error.issues.some((issue) => issue.path.includes("note")) ? "Keep your note to 100 characters or fewer." : body.error.message });
+    return;
+  }
+
+  const moderatedNote = moderateParkingNote(body.data.note);
+  if (moderatedNote.error) {
+    res.status(400).json({ error: moderatedNote.error });
     return;
   }
 
@@ -381,6 +392,7 @@ router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
         garageId: params.data.garageId,
         availabilityStatus: body.data.availabilityStatus,
         isVerified: true,
+        note: moderatedNote.note,
         createdAt: now,
       })
       .returning();
@@ -409,6 +421,39 @@ router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
   res
     .status(201)
     .json(CreateParkingReportResponse.parse({ ...toParkingReport(result.report), expiresAt: new Date(result.report.createdAt.getTime() + REPORT_EXPIRY_MS).toISOString(), pointsEarned: result.pointsEarned }));
+});
+
+router.post("/garages/:garageId/reports/:reportId/flag", async (req, res): Promise<void> => {
+  const userId = authenticatedReporter(req);
+  if (!userId) { res.status(401).json({ error: "Sign in to flag a note." }); return; }
+  const params = FlagParkingReportNoteParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "Invalid report." }); return; }
+  const [profile] = await db.select({ userId: userProfilesTable.userId }).from(userProfilesTable)
+    .where(and(eq(userProfilesTable.userId, userId), eq(userProfilesTable.authUserId, userId)));
+  if (!profile) { res.status(403).json({ error: "Complete your profile before flagging a note." }); return; }
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('parking-note-flags'), hashtext(${userId}))`);
+    const [report] = await tx.select().from(parkingReportsTable).where(and(
+      eq(parkingReportsTable.id, params.data.reportId),
+      eq(parkingReportsTable.garageId, params.data.garageId),
+      gt(parkingReportsTable.createdAt, new Date(Date.now() - REPORT_EXPIRY_MS)),
+    ));
+    if (!report?.note) return { status: 404, error: "This active note is no longer available." };
+    if (report.userId === userId) return { status: 403, error: "You cannot flag your own note." };
+    const [existing] = await tx.select({ id: parkingNoteFlagsTable.id }).from(parkingNoteFlagsTable).where(and(
+      eq(parkingNoteFlagsTable.reportId, report.id), eq(parkingNoteFlagsTable.userId, userId),
+    ));
+    if (existing) return { status: 200 };
+    const recent = await tx.select({ id: parkingNoteFlagsTable.id }).from(parkingNoteFlagsTable).where(and(
+      eq(parkingNoteFlagsTable.userId, userId),
+      gt(parkingNoteFlagsTable.createdAt, new Date(Date.now() - 24 * 60 * 60_000)),
+    ));
+    if (recent.length >= 20) return { status: 429, error: "You've reached the daily flag limit. Please try again later." };
+    await tx.insert(parkingNoteFlagsTable).values({ reportId: report.id, userId });
+    return { status: 200 };
+  });
+  if (result.status !== 200) { res.status(result.status).json({ error: result.error }); return; }
+  res.json(FlagParkingReportNoteResponse.parse({ message: "Thanks. This note has been flagged for review." }));
 });
 
 router.get("/campus/summary", async (_req, res): Promise<void> => {

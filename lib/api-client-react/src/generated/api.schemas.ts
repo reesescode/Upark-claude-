@@ -153,6 +153,12 @@ export const ParkingReportAvailabilityStatus = {
 } as const;
 
 export interface ParkingReport {
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  note?: string | null;
+  noteEmergency?: boolean;
   id: number;
   garageId: string;
   availabilityStatus: ParkingReportAvailabilityStatus;
@@ -192,8 +198,14 @@ export interface ReportLocation {
 }
 
 export interface ParkingReportInput {
+  /** @maxLength 100 */
+  note?: string;
   location: ReportLocation;
   availabilityStatus: ParkingReportInputAvailabilityStatus;
+}
+
+export interface NoteFlagResult {
+  message: string;
 }
 
 export interface RewardsSummary {

@@ -18,6 +18,7 @@ export * from './healthStatus';
 export * from './leaderboardEntry';
 export * from './listGaragesParams';
 export * from './listGaragesSort';
+export * from './noteFlagResult';
 export * from './notificationSettings';
 export * from './notificationSettingsInput';
 export * from './parkingReport';

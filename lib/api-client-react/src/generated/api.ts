@@ -26,6 +26,7 @@ import type {
   HealthStatus,
   LeaderboardEntry,
   ListGaragesParams,
+  NoteFlagResult,
   NotificationSettings,
   NotificationSettingsInput,
   ParkingReport,
@@ -476,6 +477,76 @@ export const useCreateParkingReport = <TError = ErrorType<void | ParkingReportRa
         TContext
       > => {
       return useMutation(getCreateParkingReportMutationOptions(options));
+    }
+
+export const getFlagParkingReportNoteUrl = (garageId: string,
+    reportId: number,) => {
+
+
+
+
+  return `/api/garages/${garageId}/reports/${reportId}/flag`
+}
+
+export const flagParkingReportNote = async (garageId: string,
+    reportId: number, options?: Parameters<typeof customFetch>[1]): Promise<NoteFlagResult> => {
+
+  return customFetch<NoteFlagResult>(getFlagParkingReportNoteUrl(garageId,reportId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getFlagParkingReportNoteMutationKey = () => ['flagParkingReportNote'] as const;
+
+export const getFlagParkingReportNoteMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof flagParkingReportNote>>, TError,FlagParkingReportNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof flagParkingReportNote>>, TError,FlagParkingReportNoteMutationVariables, TContext> => {
+
+const mutationKey = getFlagParkingReportNoteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof flagParkingReportNote>>, FlagParkingReportNoteMutationVariables> = (props) => {
+          const {garageId,reportId} = props ?? {};
+
+          return  flagParkingReportNote(garageId,reportId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FlagParkingReportNoteMutationResult = NonNullable<Awaited<ReturnType<typeof flagParkingReportNote>>>
+
+    export type FlagParkingReportNoteMutationError = ErrorType<void>
+    export type FlagParkingReportNoteMutationVariables = {garageId: string;reportId: number}
+
+    export const useFlagParkingReportNote = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof flagParkingReportNote>>, TError,FlagParkingReportNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof flagParkingReportNote>>,
+        TError,
+        FlagParkingReportNoteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getFlagParkingReportNoteMutationOptions(options));
     }
 
 export const getGetMyRewardsUrl = () => {

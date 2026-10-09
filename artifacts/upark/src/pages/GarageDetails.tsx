@@ -7,6 +7,7 @@ import {
   getGetCampusSummaryQueryKey,
   useListParkingReports,
   useCreateParkingReport,
+  useFlagParkingReportNote,
   useGetMyRewards,
   getGetMyRewardsQueryKey,
   getGetRewardsLeaderboardQueryKey,
@@ -19,6 +20,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { ParkingReportNote } from "@/components/ParkingReportNote";
 import {
   Dialog,
   DialogContent,
@@ -93,6 +96,9 @@ export default function GarageDetails() {
     isError: reportsError,
   } = useListParkingReports(id!, { query: { queryKey: getListParkingReportsQueryKey(id!), refetchInterval: 60_000, staleTime: 0 } });
   const createReport = useCreateParkingReport();
+  const flagNote = useFlagParkingReportNote();
+  const [note, setNote] = useState("");
+  const [flagFeedback, setFlagFeedback] = useState<{ reportId: number; message: string; error: boolean } | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] =
     useState<ParkingReportInputAvailabilityStatus | null>(null);
@@ -137,6 +143,7 @@ export default function GarageDetails() {
         data: {
           location,
           availabilityStatus: selectedStatus,
+          ...(note.trim() ? { note: note.trim() } : {}),
         },
       },
       {
@@ -161,6 +168,7 @@ export default function GarageDetails() {
           setReportSuccess(true);
           setReportOpen(false);
           setSelectedStatus(null);
+          setNote("");
         },
         onError: (error) => {
           setReportError(getReportErrorMessage(error));
@@ -409,8 +417,9 @@ export default function GarageDetails() {
               {reports.map((report) => (
                 <div
                   key={report.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl bg-gray-50 p-4"
+                  className="rounded-2xl bg-gray-50 p-4"
                 >
+                  <div className="flex items-center justify-between gap-3">
                   <span
                     className={cn(
                       "inline-flex rounded-xl border px-3 py-1.5 text-sm font-bold",
@@ -422,6 +431,26 @@ export default function GarageDetails() {
                   <span className="text-xs font-medium text-gray-500 text-right">
                     {formatReportedTime(report.createdAt)}
                   </span>
+                  </div>
+                  {report.note && (
+                    <ParkingReportNote
+                      note={report.note}
+                      emergency={report.noteEmergency ?? false}
+                      pending={flagNote.isPending && flagNote.variables?.reportId === report.id}
+                      feedback={flagFeedback?.reportId === report.id ? flagFeedback : null}
+                      onFlag={() => {
+                        setFlagFeedback(null);
+                        if (!user) {
+                          setFlagFeedback({ reportId: report.id, message: "Sign in to flag a note.", error: true });
+                          return;
+                        }
+                        flagNote.mutate({ garageId: id!, reportId: report.id }, {
+                          onSuccess: (result) => setFlagFeedback({ reportId: report.id, message: result.message, error: false }),
+                          onError: (error) => setFlagFeedback({ reportId: report.id, message: getReportErrorMessage(error), error: true }),
+                        });
+                      }}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -479,6 +508,27 @@ export default function GarageDetails() {
                 </label>
               ))}
             </fieldset>
+
+            <div className="mt-5">
+              <label htmlFor="parking-note" className="block text-sm font-bold text-gray-700 mb-2">
+                Add a note (optional)
+              </label>
+              <Textarea
+                id="parking-note"
+                value={note}
+                onChange={(event) => { setNote(event.target.value); setReportError(null); }}
+                maxLength={100}
+                rows={3}
+                className="rounded-2xl border-gray-200 bg-white resize-none"
+                placeholder="e.g. Spot opening up near the stairs."
+                aria-describedby="parking-note-help parking-note-count"
+                disabled={createReport.isPending || checkingLocation}
+              />
+              <div className="mt-2 flex justify-between gap-3 text-xs text-gray-500">
+                <p id="parking-note-help">Keep updates appropriate and helpful. No personal contact details.</p>
+                <span id="parking-note-count" className="shrink-0 tabular-nums" aria-live="polite">{note.length}/100</span>
+              </div>
+            </div>
 
             {reportError && (
               <div

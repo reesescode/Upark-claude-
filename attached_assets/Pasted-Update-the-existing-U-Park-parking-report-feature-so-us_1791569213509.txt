@@ -1,0 +1,29 @@
+Update the existing U Park parking report feature so users can optionally add a short description to their parking report.
+Keep the current parking status options and reporting flow the same. Do not remove or redesign the existing status system.
+Add an optional text field under the parking status selector called:
+“Add a note (optional)”
+Example notes:
+- “I’m leaving now, spot opening up near the stairs.”
+- “This lot is filling up fast.”
+- “Entrance is blocked right now.”
+Requirements:
+- Limit the note to 100 characters maximum.
+- Show a live character counter, for example 42/100.
+- Notes must be optional. Users should still be able to submit a parking report without typing anything.
+- Save the note with the existing parking report in the database.
+- Display the note with the report in the parking feed.
+- Clearly label the note as “User Reported” so users understand it is not official university information.
+- Keep the existing report expiration system. When the parking report expires, the note should expire from the active feed with it.
+Add content moderation before a note can be submitted:
+- Block common profanity and curse words.
+- Block slurs, hateful language, sexual content, harassment, threats, and obvious spam.
+- Block phone numbers, email addresses, and other obvious personal contact information.
+- Detect common attempts to bypass the profanity filter using symbols, numbers, spaces, or misspellings when reasonably possible.
+- If the note is blocked, do not submit it and show a simple message such as:
+  “Please keep parking updates appropriate and helpful.”
+Also add a small Report or Flag button next to user-written notes so other users can report inappropriate or false content.
+For notes that mention emergencies such as fire, weapons, medical emergencies, or immediate danger, do not present the information as verified. Keep the User Reported label clearly visible and show a small message like:
+“For emergencies, contact 911 or campus police.”
+Do not delete or reset any existing users, parking reports, points, or database data.
+Keep the current U Park design, colors, maps, authentication, points system, location verification, and existing features the same unless a small change is required to add this feature.
+Make sure the feature works well on both mobile and desktop.

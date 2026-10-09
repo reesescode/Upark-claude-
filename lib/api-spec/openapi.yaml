@@ -144,6 +144,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ParkingReportRateLimitError"
+  /garages/{garageId}/reports/{reportId}/flag:
+    post:
+      operationId: flagParkingReportNote
+      tags: [parking]
+      parameters:
+        - name: garageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Note flagged for review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteFlagResult"
+        "401":
+          description: Sign in required
+        "403":
+          description: Profile required or cannot flag own note
+        "404":
+          description: Active note not found
+        "429":
+          description: Daily flag limit reached
   /rewards/me:
     get:
       operationId: getMyRewards
@@ -513,6 +544,11 @@ components:
     ParkingReport:
       type: object
       properties:
+        note:
+          type: ["string", "null"]
+          maxLength: 100
+        noteEmergency:
+          type: boolean
         id:
           type: integer
         garageId:
@@ -537,6 +573,9 @@ components:
     ParkingReportInput:
       type: object
       properties:
+        note:
+          type: string
+          maxLength: 100
         location:
           $ref: "#/components/schemas/ReportLocation"
         availabilityStatus:
@@ -545,6 +584,12 @@ components:
       required:
         - location
         - availabilityStatus
+    NoteFlagResult:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
     ReportLocation:
       type: object
       properties:
