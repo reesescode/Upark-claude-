@@ -7,6 +7,10 @@ import {
   getGetCampusSummaryQueryKey,
   useListParkingReports,
   useCreateParkingReport,
+  useGetMyRewards,
+  getGetMyRewardsQueryKey,
+  getGetRewardsLeaderboardQueryKey,
+  getGetUserProfileQueryKey,
   getListParkingReportsQueryKey,
   type ParkingReport,
   type ParkingReportInputAvailabilityStatus,
@@ -28,6 +32,7 @@ import { getStatusColor, getStatusText, getStatusColorSolid } from "@/lib/garage
 import { useFavorites, useUser } from "@/hooks/use-local-data";
 import { cn } from "@/lib/utils";
 import { getAvailabilityLabel } from "@/lib/availability-utils";
+import { getReportLocation } from "@/lib/report-location";
 
 const reportOptions: Array<{
   value: ParkingReportInputAvailabilityStatus;
@@ -58,8 +63,6 @@ function getReportErrorMessage(error: unknown) {
   if (
     typeof error === "object" &&
     error !== null &&
-    "status" in error &&
-    error.status === 429 &&
     "data" in error &&
     typeof error.data === "object" &&
     error.data !== null &&
@@ -83,24 +86,27 @@ function formatReportedTime(createdAt: string) {
 export default function GarageDetails() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const { data: garage, isLoading, isError } = useGetGarage(id!);
+  const { data: garage, isLoading, isError } = useGetGarage(id!, { query: { queryKey: getGetGarageQueryKey(id!), refetchInterval: 60_000 } });
   const {
     data: reports,
     isLoading: reportsLoading,
     isError: reportsError,
-  } = useListParkingReports(id!);
+  } = useListParkingReports(id!, { query: { queryKey: getListParkingReportsQueryKey(id!), refetchInterval: 60_000, staleTime: 0 } });
   const createReport = useCreateParkingReport();
   const [reportOpen, setReportOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] =
     useState<ParkingReportInputAvailabilityStatus | null>(null);
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [pointsEarned, setPointsEarned] = useState(0);
+  const [checkingLocation, setCheckingLocation] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   
   const [, setLocation] = useLocation();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { user } = useUser();
+  const { data: rewards, isError: rewardsError } = useGetMyRewards({ query: { queryKey: getGetMyRewardsQueryKey(), enabled: !!user, refetchInterval: 60_000, staleTime: 0 } });
 
-  const handleSubmitReport = (event: React.FormEvent) => {
+  const handleSubmitReport = async (event: React.FormEvent) => {
     event.preventDefault();
     setReportError(null);
     setReportSuccess(false);
@@ -114,11 +120,22 @@ export default function GarageDetails() {
       return;
     }
 
+    if (!garage || checkingLocation || createReport.isPending) return;
+    setCheckingLocation(true);
+    let location;
+    try {
+      location = await getReportLocation(garage);
+    } catch (error) {
+      setReportError(getReportErrorMessage(error));
+      setCheckingLocation(false);
+      return;
+    }
+    setCheckingLocation(false);
     createReport.mutate(
       {
         garageId: id!,
         data: {
-          userId: user.studentId,
+          location,
           availabilityStatus: selectedStatus,
         },
       },
@@ -137,6 +154,10 @@ export default function GarageDetails() {
           queryClient.invalidateQueries({
             queryKey: getGetCampusSummaryQueryKey(),
           });
+          queryClient.invalidateQueries({ queryKey: getGetMyRewardsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetRewardsLeaderboardQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetUserProfileQueryKey(user.studentId) });
+          setPointsEarned(newReport.pointsEarned ?? 0);
           setReportSuccess(true);
           setReportOpen(false);
           setSelectedStatus(null);
@@ -180,7 +201,7 @@ export default function GarageDetails() {
     <Dialog
       open={reportOpen}
       onOpenChange={(open) => {
-        if (createReport.isPending) return;
+        if (createReport.isPending || checkingLocation) return;
         if (open) {
           setReportError(null);
           setSelectedStatus("plenty_spots");
@@ -268,7 +289,7 @@ export default function GarageDetails() {
             className="flex items-center gap-3 rounded-2xl border border-green-100 bg-green-50 p-4 text-green-800"
           >
             <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-            <p className="font-bold">Parking report submitted!</p>
+            <p className="font-bold">Parking report submitted! {pointsEarned > 0 ? `+${pointsEarned} points` : "Daily reward limit reached."}</p>
           </div>
         )}
 
@@ -281,6 +302,7 @@ export default function GarageDetails() {
               <h2 className="text-lg font-bold text-gray-900">How is parking right now?</h2>
               <p className="text-sm text-gray-500 mt-1">
                 Help other students find a spot.
+                {user && <span className="block mt-1">{rewards ? `${rewards.reportsRemainingToday} of 2 rewarded reports left today.` : rewardsError ? "Rewards unavailable right now." : "Loading rewards..."}</span>}
               </p>
             </div>
           </div>
@@ -401,7 +423,10 @@ export default function GarageDetails() {
             <DialogTitle className="text-2xl font-black text-gray-900">
               Report Parking
             </DialogTitle>
-            <DialogDescription>{garage.name}</DialogDescription>
+            <DialogDescription>
+              {garage.name}. Location access is required; you must be within 100 meters. Reports expire after 30 minutes.
+              {rewards && <span className="block mt-2">{rewards.reportsRemainingToday} rewarded reports left today · resets at midnight Eastern. {rewards.reportsRemainingToday === 0 ? "You can still report without earning points." : "Earn 10 points, plus 5 when another student confirms."}</span>}
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmitReport}>
@@ -456,10 +481,10 @@ export default function GarageDetails() {
             <Button
               type="submit"
               className="mt-6 h-14 w-full rounded-2xl text-base gap-2"
-              disabled={createReport.isPending}
+              disabled={createReport.isPending || checkingLocation}
             >
-              {createReport.isPending && <Loader2 size={19} className="animate-spin" />}
-              {createReport.isPending ? "Submitting..." : "Submit Report"}
+              {(createReport.isPending || checkingLocation) && <Loader2 size={19} className="animate-spin" />}
+              {checkingLocation ? "Checking location..." : createReport.isPending ? "Submitting..." : "Verify Location & Submit"}
             </Button>
           </form>
       </DialogContent>

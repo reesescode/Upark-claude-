@@ -13,4 +13,6 @@ export interface ParkingReport {
   availabilityStatus: ParkingReportAvailabilityStatus;
   createdAt: string;
   isVerified: boolean;
+  expiresAt?: string;
+  pointsEarned?: number;
 }

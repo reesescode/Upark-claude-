@@ -135,6 +135,8 @@ export interface ParkingReport {
   availabilityStatus: ParkingReportAvailabilityStatus;
   createdAt: string;
   isVerified: boolean;
+  expiresAt?: string;
+  pointsEarned?: number;
 }
 
 export type ParkingReportInputAvailabilityStatus = typeof ParkingReportInputAvailabilityStatus[keyof typeof ParkingReportInputAvailabilityStatus];
@@ -147,10 +149,46 @@ export const ParkingReportInputAvailabilityStatus = {
   full: 'full',
 } as const;
 
+export interface ReportLocation {
+  /**
+     * @minimum -90
+     * @maximum 90
+     */
+  latitude: number;
+  /**
+     * @minimum -180
+     * @maximum 180
+     */
+  longitude: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  accuracy: number;
+  timestamp: number;
+}
+
 export interface ParkingReportInput {
-  /** @minLength 1 */
-  userId: string;
+  location: ReportLocation;
   availabilityStatus: ParkingReportInputAvailabilityStatus;
+}
+
+export interface RewardsSummary {
+  totalPoints: number;
+  validReports: number;
+  currentStreak: number;
+  reportsRemainingToday: number;
+  level: string;
+  resetsAt: string;
+  timeZone: string;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  totalPoints: number;
+  validReports: number;
+  level: string;
 }
 
 export interface ParkingReportRateLimitError {

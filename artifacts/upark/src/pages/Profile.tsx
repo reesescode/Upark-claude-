@@ -46,6 +46,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
+import { RewardsSummary } from "@/components/RewardsSummary";
 
 type Screen = "menu" | "preferences" | "notifications" | "privacy" | "support" | "data";
 
@@ -135,6 +136,7 @@ export default function Profile() {
               </div>
             </div>
             {profile && <ProfileDetailsEditor profile={profile} />}
+            <RewardsSummary />
 
             {/* Menu Items */}
             <div className="bg-white rounded-3xl shadow-xs border border-gray-100 overflow-hidden mb-6">

@@ -125,6 +125,12 @@ paths:
                 $ref: "#/components/schemas/ParkingReport"
         "400":
           description: Invalid report
+        "401":
+          description: Sign in required
+        "403":
+          description: Verified profile required
+        "409":
+          description: Duplicate active report
         "404":
           description: Garage not found
         "429":
@@ -138,6 +144,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ParkingReportRateLimitError"
+  /rewards/me:
+    get:
+      operationId: getMyRewards
+      tags: [parking]
+      responses:
+        "200":
+          description: Signed-in contributor rewards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RewardsSummary"
+        "401":
+          description: Sign in required
+  /rewards/leaderboard:
+    get:
+      operationId: getRewardsLeaderboard
+      tags: [parking]
+      responses:
+        "200":
+          description: Top contributors with privacy-safe names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
   /garages/{garageId}/route:
     post:
       operationId: getGarageRoute
@@ -488,6 +520,10 @@ components:
           type: string
         isVerified:
           type: boolean
+        expiresAt:
+          type: string
+        pointsEarned:
+          type: integer
       required:
         - id
         - garageId
@@ -497,15 +533,64 @@ components:
     ParkingReportInput:
       type: object
       properties:
-        userId:
-          type: string
-          minLength: 1
+        location:
+          $ref: "#/components/schemas/ReportLocation"
         availabilityStatus:
           type: string
           enum: [plenty_spots, filling_up, almost_full, full]
       required:
-        - userId
+        - location
         - availabilityStatus
+    ReportLocation:
+      type: object
+      properties:
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+        accuracy:
+          type: number
+          minimum: 0
+          maximum: 100
+        timestamp:
+          type: number
+      required: [latitude, longitude, accuracy, timestamp]
+    RewardsSummary:
+      type: object
+      properties:
+        totalPoints:
+          type: integer
+        validReports:
+          type: integer
+        currentStreak:
+          type: integer
+        reportsRemainingToday:
+          type: integer
+        level:
+          type: string
+        resetsAt:
+          type: string
+        timeZone:
+          type: string
+      required: [totalPoints, validReports, currentStreak, reportsRemainingToday, level, resetsAt, timeZone]
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        name:
+          type: string
+        totalPoints:
+          type: integer
+        validReports:
+          type: integer
+        level:
+          type: string
+      required: [rank, name, totalPoints, validReports, level]
     ParkingReportRateLimitError:
       type: object
       properties:

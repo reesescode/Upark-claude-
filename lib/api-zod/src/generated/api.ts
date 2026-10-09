@@ -103,7 +103,9 @@ export const ListParkingReportsResponseItem = zod.object({
   "garageId": zod.string(),
   "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full']),
   "createdAt": zod.string(),
-  "isVerified": zod.boolean()
+  "isVerified": zod.boolean(),
+  "expiresAt": zod.string().optional(),
+  "pointsEarned": zod.number().int().optional()
 })
 export const ListParkingReportsResponse = zod.array(ListParkingReportsResponseItem)
 
@@ -116,11 +118,24 @@ export const CreateParkingReportParams = zod.object({
   "garageId": zod.coerce.string()
 })
 
+export const createParkingReportBodyLocationLatitudeMin = -90;
+export const createParkingReportBodyLocationLatitudeMax = 90;
+
+export const createParkingReportBodyLocationLongitudeMin = -180;
+export const createParkingReportBodyLocationLongitudeMax = 180;
+
+export const createParkingReportBodyLocationAccuracyMin = 0;
+export const createParkingReportBodyLocationAccuracyMax = 100;
 
 
 
 export const CreateParkingReportBody = zod.object({
-  "userId": zod.string().min(1),
+  "location": zod.object({
+  "latitude": zod.number().min(createParkingReportBodyLocationLatitudeMin).max(createParkingReportBodyLocationLatitudeMax),
+  "longitude": zod.number().min(createParkingReportBodyLocationLongitudeMin).max(createParkingReportBodyLocationLongitudeMax),
+  "accuracy": zod.number().min(createParkingReportBodyLocationAccuracyMin).max(createParkingReportBodyLocationAccuracyMax),
+  "timestamp": zod.number()
+}),
   "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full'])
 })
 
@@ -129,8 +144,31 @@ export const CreateParkingReportResponse = zod.object({
   "garageId": zod.string(),
   "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full']),
   "createdAt": zod.string(),
-  "isVerified": zod.boolean()
+  "isVerified": zod.boolean(),
+  "expiresAt": zod.string().optional(),
+  "pointsEarned": zod.number().int().optional()
 })
+
+
+export const GetMyRewardsResponse = zod.object({
+  "totalPoints": zod.number().int(),
+  "validReports": zod.number().int(),
+  "currentStreak": zod.number().int(),
+  "reportsRemainingToday": zod.number().int(),
+  "level": zod.string(),
+  "resetsAt": zod.string(),
+  "timeZone": zod.string()
+})
+
+
+export const GetRewardsLeaderboardResponseItem = zod.object({
+  "rank": zod.number().int(),
+  "name": zod.string(),
+  "totalPoints": zod.number().int(),
+  "validReports": zod.number().int(),
+  "level": zod.string()
+})
+export const GetRewardsLeaderboardResponse = zod.array(GetRewardsLeaderboardResponseItem)
 
 
 /**
@@ -228,7 +266,9 @@ export const GetUserProfileResponse = zod.object({
   "garageId": zod.string(),
   "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full']),
   "createdAt": zod.string(),
-  "isVerified": zod.boolean()
+  "isVerified": zod.boolean(),
+  "expiresAt": zod.string().optional(),
+  "pointsEarned": zod.number().int().optional()
 }))
 })
 
@@ -287,7 +327,9 @@ export const UpsertUserProfileResponse = zod.object({
   "garageId": zod.string(),
   "availabilityStatus": zod.enum(['plenty_spots', 'filling_up', 'almost_full', 'full']),
   "createdAt": zod.string(),
-  "isVerified": zod.boolean()
+  "isVerified": zod.boolean(),
+  "expiresAt": zod.string().optional(),
+  "pointsEarned": zod.number().int().optional()
 }))
 })
 

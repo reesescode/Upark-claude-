@@ -24,12 +24,14 @@ import type {
   DrivingRoute,
   Garage,
   HealthStatus,
+  LeaderboardEntry,
   ListGaragesParams,
   NotificationSettings,
   NotificationSettingsInput,
   ParkingReport,
   ParkingReportInput,
   ParkingReportRateLimitError,
+  RewardsSummary,
   RouteOriginInput,
   RoutingError,
   SupportRequest,
@@ -475,6 +477,148 @@ export const useCreateParkingReport = <TError = ErrorType<void | ParkingReportRa
       > => {
       return useMutation(getCreateParkingReportMutationOptions(options));
     }
+
+export const getGetMyRewardsUrl = () => {
+
+
+
+
+  return `/api/rewards/me`
+}
+
+export const getMyRewards = async ( options?: Parameters<typeof customFetch>[1]): Promise<RewardsSummary> => {
+
+  return customFetch<RewardsSummary>(getGetMyRewardsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyRewardsQueryKey = () => {
+    return [
+    `/api/rewards/me`
+    ] as const;
+    }
+
+
+export const getGetMyRewardsQueryOptions = <TData = Awaited<ReturnType<typeof getMyRewards>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyRewards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyRewardsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyRewards>>> = ({ signal }) => getMyRewards({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyRewards>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyRewardsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyRewards>>>
+export type GetMyRewardsQueryError = ErrorType<void>
+
+
+
+export function useGetMyRewards<TData = Awaited<ReturnType<typeof getMyRewards>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyRewards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyRewardsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetRewardsLeaderboardUrl = () => {
+
+
+
+
+  return `/api/rewards/leaderboard`
+}
+
+export const getRewardsLeaderboard = async ( options?: Parameters<typeof customFetch>[1]): Promise<LeaderboardEntry[]> => {
+
+  return customFetch<LeaderboardEntry[]>(getGetRewardsLeaderboardUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRewardsLeaderboardQueryKey = () => {
+    return [
+    `/api/rewards/leaderboard`
+    ] as const;
+    }
+
+
+export const getGetRewardsLeaderboardQueryOptions = <TData = Awaited<ReturnType<typeof getRewardsLeaderboard>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRewardsLeaderboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRewardsLeaderboardQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRewardsLeaderboard>>> = ({ signal }) => getRewardsLeaderboard({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRewardsLeaderboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRewardsLeaderboardQueryResult = NonNullable<Awaited<ReturnType<typeof getRewardsLeaderboard>>>
+export type GetRewardsLeaderboardQueryError = ErrorType<unknown>
+
+
+
+export function useGetRewardsLeaderboard<TData = Awaited<ReturnType<typeof getRewardsLeaderboard>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRewardsLeaderboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRewardsLeaderboardQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetGarageRouteUrl = (garageId: string,) => {
 

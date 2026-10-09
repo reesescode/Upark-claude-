@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, gte, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, ilike, inArray, or, sql } from "drizzle-orm";
 import {
   db,
   garagesTable,
   parkingObservationsTable,
   parkingReportsTable,
+  parkingContributionsTable,
+  userProfilesTable,
   type GarageRecord,
   type ParkingReportRecord,
 } from "@workspace/db";
@@ -27,6 +29,7 @@ import {
   type CalibrationReport,
 } from "../lib/parking-estimator";
 
+import { authenticatedReporter, campusDay, distanceMeters, locationError, REPORT_EXPIRY_MS, similarStatus } from "../lib/parking-rewards";
 const router: IRouter = Router();
 const REPORT_COOLDOWN_MS = 5 * 60 * 1_000;
 const LEGACY_GARAGE_ID_PATTERN = /^garage-?([1-4])$/i;
@@ -253,7 +256,7 @@ router.get("/garages/:garageId/reports", async (req, res): Promise<void> => {
   const reports = await db
     .select()
     .from(parkingReportsTable)
-    .where(eq(parkingReportsTable.garageId, params.data.garageId))
+    .where(and(eq(parkingReportsTable.garageId, params.data.garageId), gte(parkingReportsTable.createdAt, new Date(Date.now() - REPORT_EXPIRY_MS))))
     .orderBy(
       desc(parkingReportsTable.createdAt),
       desc(parkingReportsTable.id),
@@ -264,6 +267,8 @@ router.get("/garages/:garageId/reports", async (req, res): Promise<void> => {
 });
 
 router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
+  const userId = authenticatedReporter(req);
+  if (!userId) { res.status(401).json({ error: "Sign in to report parking." }); return; }
   const params = CreateParkingReportParams.safeParse(req.params);
   const body = CreateParkingReportBody.safeParse(req.body);
 
@@ -277,7 +282,7 @@ router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
   }
 
   const [garage] = await db
-    .select({ id: garagesTable.id })
+    .select()
     .from(garagesTable)
     .where(eq(garagesTable.id, params.data.garageId));
 
@@ -286,25 +291,43 @@ router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
     return;
   }
 
+  const error = locationError(body.data.location, garage, new Date());
+  if (error) { res.status(400).json({ error }); return; }
+  const [profile] = await db.select().from(userProfilesTable).where(and(eq(userProfilesTable.userId, userId), eq(userProfilesTable.authUserId, userId)));
+  if (!profile) { res.status(403).json({ error: "Complete your profile before reporting parking." }); return; }
+
   const result = await db.transaction(async (tx) => {
     await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtext(${body.data.userId}), hashtext(${params.data.garageId}))`,
+      sql`select pg_advisory_xact_lock(hashtext('parking-garage'), hashtext(${garage.id}))`,
     );
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('parking-rewards'), hashtext(${userId}))`);
 
     const now = new Date();
+    const locationFailure = locationError(body.data.location, garage, now);
+    if (locationFailure) return { kind: "invalid", error: locationFailure } as const;
+    const active = await tx.select().from(parkingContributionsTable).where(and(
+      eq(parkingContributionsTable.garageId, garage.id), gt(parkingContributionsTable.expiresAt, now),
+    ));
+    if (active.some((row) => row.userId === userId && row.availabilityStatus === body.data.availabilityStatus)) {
+      return { kind: "duplicate", error: "You already reported this status. Wait for it to expire or report a changed status." } as const;
+    }
     const cooldownStartedAt = new Date(now.getTime() - REPORT_COOLDOWN_MS);
-    const [recentReport] = await tx
+    const [recentVisibleReport] = await tx
       .select({ createdAt: parkingReportsTable.createdAt })
       .from(parkingReportsTable)
       .where(
         and(
-          eq(parkingReportsTable.userId, body.data.userId),
+          eq(parkingReportsTable.userId, userId),
           eq(parkingReportsTable.garageId, params.data.garageId),
           gte(parkingReportsTable.createdAt, cooldownStartedAt),
         ),
       )
       .orderBy(desc(parkingReportsTable.createdAt))
       .limit(1);
+    const recentContribution = active
+      .filter((row) => row.userId === userId && row.createdAt >= cooldownStartedAt)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+    const recentReport = recentVisibleReport ?? recentContribution;
 
     if (recentReport) {
       const nextAllowedAt = new Date(
@@ -323,17 +346,37 @@ router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
       } as const;
     }
 
+    const day = campusDay(now);
+    const rewardedToday = await tx.select({ id: parkingContributionsTable.id }).from(parkingContributionsTable).where(and(
+      eq(parkingContributionsTable.userId, userId), eq(parkingContributionsTable.rewardDay, day), gt(parkingContributionsTable.basePoints, 0),
+    ));
+    const basePoints = rewardedToday.length < 2 ? 10 : 0;
+    const matches = active.filter((row) => row.userId !== userId && similarStatus(row.availabilityStatus, body.data.availabilityStatus));
+    const bonusPoints = basePoints && matches.length ? 5 : 0;
     const [report] = await tx
       .insert(parkingReportsTable)
       .values({
-        userId: body.data.userId,
+        userId,
         garageId: params.data.garageId,
         availabilityStatus: body.data.availabilityStatus,
+        isVerified: true,
+        createdAt: now,
       })
       .returning();
-    return { kind: "created", report } as const;
+    await tx.insert(parkingContributionsTable).values({
+      reportId: report.id, userId, garageId: garage.id, availabilityStatus: report.availabilityStatus,
+      createdAt: now, expiresAt: new Date(now.getTime() + REPORT_EXPIRY_MS), rewardDay: day,
+      basePoints, bonusPoints, confirmedByUserId: bonusPoints ? matches[0].userId : null,
+      distanceMeters: distanceMeters(body.data.location, garage), accuracyMeters: body.data.location.accuracy,
+    });
+    const confirmIds = matches.filter((row) => row.basePoints > 0 && row.bonusPoints === 0).map((row) => row.id);
+    if (confirmIds.length) await tx.update(parkingContributionsTable).set({ bonusPoints: 5, confirmedByUserId: userId }).where(inArray(parkingContributionsTable.id, confirmIds));
+    return { kind: "created", report, pointsEarned: basePoints + bonusPoints } as const;
   });
 
+  if (result.kind === "duplicate" || result.kind === "invalid") {
+    res.status(result.kind === "duplicate" ? 409 : 400).json({ error: result.error }); return;
+  }
   if (result.kind === "rate-limited") {
     res
       .set("Retry-After", String(result.rateLimit.retryAfterSeconds))
@@ -344,7 +387,7 @@ router.post("/garages/:garageId/reports", async (req, res): Promise<void> => {
 
   res
     .status(201)
-    .json(CreateParkingReportResponse.parse(toParkingReport(result.report)));
+    .json(CreateParkingReportResponse.parse({ ...toParkingReport(result.report), expiresAt: new Date(result.report.createdAt.getTime() + REPORT_EXPIRY_MS).toISOString(), pointsEarned: result.pointsEarned }));
 });
 
 router.get("/campus/summary", async (_req, res): Promise<void> => {

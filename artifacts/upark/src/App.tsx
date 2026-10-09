@@ -3,6 +3,7 @@ import { ClerkProvider, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { getListGaragesQueryKey, getGetCampusSummaryQueryKey } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -21,12 +22,16 @@ import GarageDetails from '@/pages/GarageDetails';
 import Navigate from '@/pages/Navigate';
 import Favorites from '@/pages/Favorites';
 import Profile from '@/pages/Profile';
+import Leaderboard from '@/pages/Leaderboard';
 import AccountSetup from '@/pages/AccountSetup';
 import { SignInPage, SignUpPage } from '@/pages/Auth';
 import OnboardingRoute from '@/pages/OnboardingRoute';
 import { shouldShowOnboarding } from '@/lib/onboarding';
 
 const queryClient = new QueryClient();
+// Refresh trusted parking data so reports age out even while a page stays open.
+queryClient.setQueryDefaults(getListGaragesQueryKey(), { refetchInterval: 60_000 });
+queryClient.setQueryDefaults(getGetCampusSummaryQueryKey(), { refetchInterval: 60_000 });
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -82,6 +87,7 @@ function Router() {
         <Route path="/navigate/:id" component={Navigate} />
         <Route path="/favorites" component={Favorites} />
         <Route path="/profile" component={Profile} />
+        <Route path="/leaderboard" component={Leaderboard} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

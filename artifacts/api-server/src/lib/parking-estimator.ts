@@ -4,8 +4,9 @@ import type {
   ParkingReportRecord,
 } from "@workspace/db";
 
-export const LIVE_WINDOW_MS = 2 * 60 * 60 * 1_000;
+export const LIVE_WINDOW_MS = 30 * 60 * 1_000;
 export const STALE_AFTER_MS = 30 * 60 * 1_000;
+const CALIBRATION_WINDOW_MS = 2 * 60 * 60 * 1_000;
 
 export type AvailabilityReport = Pick<
   ParkingReportRecord,
@@ -46,7 +47,7 @@ export function buildCalibratedRatios(
     const latestByStudent = new Map<string, CalibrationReport>();
     for (const report of reports) {
       const ageMs = observationTime - report.createdAt.getTime();
-      if (ageMs < 0 || ageMs > LIVE_WINDOW_MS) continue;
+      if (ageMs < 0 || ageMs > CALIBRATION_WINDOW_MS) continue;
       const current = latestByStudent.get(report.userId);
       if (!current || report.createdAt > current.createdAt) {
         latestByStudent.set(report.userId, report);
@@ -70,7 +71,7 @@ export function buildCalibratedRatios(
       const outcomeKey = `${report.id}:${ageBucket}`;
       if (measuredAgeBuckets.has(outcomeKey)) continue;
       measuredAgeBuckets.add(outcomeKey);
-      const weight = Math.max(0.25, 1 - ageMs / LIVE_WINDOW_MS);
+      const weight = Math.max(0.25, 1 - ageMs / CALIBRATION_WINDOW_MS);
       const current = outcomes.get(report.availabilityStatus) ?? {
         weightedRatio: 0,
         weight: 0,

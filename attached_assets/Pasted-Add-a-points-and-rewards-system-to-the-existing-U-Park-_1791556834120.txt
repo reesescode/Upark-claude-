@@ -1,0 +1,44 @@
+Add a points and rewards system to the existing U Park parking report feature. Keep the current design, maps, colors, database, authentication, and existing functionality the same unless a change is required for this feature.
+
+When a user reports the status of a parking garage, verify that they are actually near that garage using their device location.
+
+Requirements:
+
+- Ask the user for location permission before allowing them to submit a parking report.
+- Only allow a report if the user is within about 300 feet / 100 meters of the selected parking garage.
+- If they are too far away, show a message saying: “You must be near this garage to report its parking status.”
+- Do not allow users to manually change the location used for verification.
+- Verify the location on the backend as well as the front end when possible so users cannot easily bypass the check.
+
+Points system:
+
+- Give the user 10 points for a valid location-verified parking report.
+- Give an additional 5 points if another location-verified user reports the same or a similar parking status for that garage within the active reporting window.
+- Limit each user to 2 rewarded parking reports per day.
+- Clearly show the user how many rewarded reports they have left for the day.
+- Reset the daily report limit at midnight.
+- Each report should automatically expire after 30 minutes so old parking information is not treated as current.
+- Do not award points for expired, duplicate, invalid, or location-unverified reports.
+- A user should not be able to confirm their own report.
+
+Add a simple points display to the user profile showing:
+
+- Total points
+- Number of valid reports submitted
+- Current reporting streak
+- Reports remaining today
+
+Add a basic leaderboard that shows the top U Park contributors by points. Only show the user’s first name and last initial for privacy.
+
+Add simple achievement levels:
+
+- 0–49 points: New Reporter
+- 50–149 points: Campus Helper
+- 150–299 points: Parking Pro
+- 300+ points: U Park MVP
+
+Also keep a history of reports and points earned in the database so the system can prevent duplicate rewards and calculate totals correctly.
+
+Do not delete or reset any existing users, reports, or data. Integrate this system into the parking reporting feature that already exists instead of rebuilding that feature from scratch.
+
+Make sure everything works on both desktop and mobile and matches the current U Park UI.

@@ -7,11 +7,23 @@ import {
   garagesTable,
   parkingReportsTable,
   pool,
+  userProfilesTable,
 } from "@workspace/db";
 import app from "../app";
 
 const garageId = `parking-test-${randomUUID()}`;
 const demoGarageId = `parking-demo-test-${randomUUID()}`;
+const testUsers: string[] = [];
+const apiTestUser = `api-test-user-${randomUUID()}`;
+async function submitReport(userId: string, availabilityStatus: string, targetGarage = garageId) {
+  if (!testUsers.includes(userId)) {
+    testUsers.push(userId);
+    await db.insert(userProfilesTable).values({ userId, authUserId: userId, displayName: "Test", firstName: "Test", lastName: "Reporter" });
+  }
+  return request(app).post(`/api/garages/${targetGarage}/reports`)
+    .set("x-test-user-id", userId)
+    .send({ availabilityStatus, location: { latitude: 0, longitude: 0, accuracy: 5, timestamp: Date.now() } });
+}
 const verifiedFgcuLocations = [
   {
     id: "arts-garage",
@@ -113,18 +125,14 @@ describe("parking report routes", () => {
           demoGarageId,
         ]),
       );
+    if (testUsers.length) await db.delete(userProfilesTable).where(inArray(userProfilesTable.userId, testUsers));
     await pool.end();
   });
 
   it("creates and persists a valid report with its database timestamp", async () => {
     const beforeRequest = Date.now();
-    const response = await request(app)
-      .post(`/api/garages/${garageId}/reports`)
-      .send({
-        userId: "api-test-user",
-        availabilityStatus: "plenty_spots",
-      })
-      .expect(201);
+    const response = await submitReport(apiTestUser, "plenty_spots");
+    expect(response.status).toBe(201);
 
     expect(response.body).toMatchObject({
       garageId,
@@ -140,7 +148,8 @@ describe("parking report routes", () => {
       .where(eq(parkingReportsTable.id, response.body.id));
 
     expect(stored).toBeDefined();
-    expect(stored?.userId).toBe("api-test-user");
+    expect(stored?.userId).toBe(apiTestUser);
+    expect(stored?.isVerified).toBe(true);
     expect(stored?.createdAt).toBeInstanceOf(Date);
     expect(stored?.createdAt.toISOString()).toBe(response.body.createdAt);
   });
@@ -151,13 +160,7 @@ describe("parking report routes", () => {
       .from(parkingReportsTable)
       .where(eq(parkingReportsTable.garageId, garageId));
 
-    await request(app)
-      .post(`/api/garages/${garageId}/reports`)
-      .send({
-        userId: "api-test-user",
-        availabilityStatus: "maybe_open",
-      })
-      .expect(400);
+    expect((await submitReport(apiTestUser, "maybe_open")).status).toBe(400);
 
     const after = await db
       .select({ id: parkingReportsTable.id })
@@ -168,15 +171,9 @@ describe("parking report routes", () => {
 
   it("limits repeated reports from the same student for the same garage", async () => {
     const userId = `rate-limited-${randomUUID()}`;
-    await request(app)
-      .post(`/api/garages/${garageId}/reports`)
-      .send({ userId, availabilityStatus: "plenty_spots" })
-      .expect(201);
-
-    const response = await request(app)
-      .post(`/api/garages/${garageId}/reports`)
-      .send({ userId, availabilityStatus: "full" })
-      .expect(429);
+    expect((await submitReport(userId, "plenty_spots")).status).toBe(201);
+    const response = await submitReport(userId, "full");
+    expect(response.status).toBe(429);
 
     expect(response.headers["retry-after"]).toMatch(/^\d+$/);
     expect(response.body).toMatchObject({
@@ -197,18 +194,14 @@ describe("parking report routes", () => {
       createdAt: new Date(Date.now() - 6 * 60 * 1_000),
     });
 
-    await request(app)
-      .post(`/api/garages/${garageId}/reports`)
-      .send({ userId, availabilityStatus: "almost_full" })
-      .expect(201);
+    expect((await submitReport(userId, "almost_full")).status).toBe(201);
   });
 
   it("accepts only one of two simultaneous reports from the same student", async () => {
     const userId = `concurrent-${randomUUID()}`;
-    const submit = (availabilityStatus: "plenty_spots" | "full") =>
-      request(app)
-        .post(`/api/garages/${garageId}/reports`)
-        .send({ userId, availabilityStatus });
+    await db.insert(userProfilesTable).values({ userId, authUserId: userId, displayName: "Test" });
+    testUsers.push(userId);
+    const submit = (availabilityStatus: "plenty_spots" | "full") => submitReport(userId, availabilityStatus);
 
     const responses = await Promise.all([
       submit("plenty_spots"),
@@ -221,13 +214,9 @@ describe("parking report routes", () => {
   });
 
   it("returns 404 when creating a report for a missing garage", async () => {
-    await request(app)
-      .post(`/api/garages/missing-${randomUUID()}/reports`)
-      .send({
-        userId: "api-test-user",
-        availabilityStatus: "full",
-      })
-      .expect(404, { error: "Garage not found" });
+    const response = await submitReport(apiTestUser, "full", `missing-${randomUUID()}`);
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe("Garage not found");
   });
 
   it("resolves legacy garage IDs to the canonical FGCU destination", async () => {
@@ -280,8 +269,8 @@ describe("parking report routes", () => {
       .delete(parkingReportsTable)
       .where(eq(parkingReportsTable.garageId, garageId));
 
-    const older = new Date("2026-01-01T10:00:00.000Z");
-    const newer = new Date("2026-01-01T11:00:00.000Z");
+    const older = new Date(Date.now() - 10 * 60_000);
+    const newer = new Date(Date.now() - 5 * 60_000);
     await db.insert(parkingReportsTable).values([
       {
         userId: "older",
@@ -391,7 +380,7 @@ describe("parking report routes", () => {
     expect(summary.body.demoGaragesCount).toBeGreaterThanOrEqual(1);
   });
 
-  it("identifies a single older verified report as stale and low confidence", async () => {
+  it("expires older verified reports without deleting their history", async () => {
     await db
       .delete(parkingReportsTable)
       .where(eq(parkingReportsTable.garageId, garageId));
@@ -409,13 +398,15 @@ describe("parking report routes", () => {
       .expect(200);
 
     expect(response.body).toMatchObject({
-      availableSpots: 0,
-      availabilitySource: "verified_reports",
-      availabilityConfidence: "low",
-      availabilityIsStale: true,
-      availabilityReportCount: 1,
-      availabilityUpdatedAt: reportedAt.toISOString(),
+      availableSpots: 50,
+      availabilitySource: "demo",
+      availabilityConfidence: "unavailable",
+      availabilityIsStale: false,
+      availabilityReportCount: 0,
+      availabilityUpdatedAt: null,
     });
+    expect((await request(app).get(`/api/garages/${garageId}/reports`)).body).toHaveLength(0);
+    expect(await db.select().from(parkingReportsTable).where(eq(parkingReportsTable.garageId, garageId))).toHaveLength(1);
   });
 
   it("does not let unverified student reports replace demo availability", async () => {

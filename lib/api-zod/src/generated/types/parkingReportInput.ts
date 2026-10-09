@@ -6,9 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ParkingReportInputAvailabilityStatus } from './parkingReportInputAvailabilityStatus';
+import type { ReportLocation } from './reportLocation';
 
 export interface ParkingReportInput {
-  /** @minLength 1 */
-  userId: string;
+  location: ReportLocation;
   availabilityStatus: ParkingReportInputAvailabilityStatus;
 }
