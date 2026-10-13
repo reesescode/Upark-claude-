@@ -6,15 +6,14 @@ export function isUserReportsOnly(garage: Garage) {
 }
 
 export function getLatestReportLabel(garage: Garage) {
+  if (isUserReportsOnly(garage)) return "See Reports";
   const labels = { plenty_spots: "Plenty of Spots", filling_up: "Filling Up", almost_full: "Almost Full", full: "Full" };
   return garage.latestReportStatus ? labels[garage.latestReportStatus] : "No Recent Reports";
 }
 
 export function getAvailabilityLabel(garage: Garage) {
   if (isUserReportsOnly(garage)) {
-    return garage.latestReportStatus && garage.availabilityUpdatedAt
-      ? `${getLatestReportLabel(garage)} — reported ${formatDistanceToNow(new Date(garage.availabilityUpdatedAt), { addSuffix: true })}`
-      : "No Recent Reports";
+    return "Student updates are in the Reports section.";
   }
   if (garage.availabilitySource === "demo") {
     return "Demo estimate — no verified live data yet";

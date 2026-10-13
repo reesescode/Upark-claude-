@@ -1,6 +1,6 @@
 - [Playwright on Replit Nix](playwright-nix.md) — local Playwright validation needs Chromium downloaded and its shared-library runtime declared.
 - [Workspace package installs](workspace-package-installs.md) — the package helper cannot target a pnpm workspace package with filters; update the package manifest, then sync once.
-- [Parking availability trust](parking-availability-trust.md) — never treat a client-provided student ID as verification or let unverified reports drive live estimates.
+- [Parking availability trust](parking-availability-trust.md) — reports are display-only; only the live feed may drive counts or marker status, even when reports are verified.
 - [Browser profile identity](browser-profile-identity.md) — never auto-link legacy browser IDs to managed-auth profiles without independent ownership proof.
 - [Parking Logix HTTP client](logix-feed-http-client.md) — poll the FGCU widget with Node HTTPS; built-in fetch timed out while HTTPS succeeded.
 - [Leaflet DivIcon accessibility](leaflet-divicon-accessibility.md) — custom div markers need an explicit DOM aria-label after Leaflet adds them.

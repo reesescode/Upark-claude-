@@ -55,7 +55,7 @@ function observation(
 }
 
 describe("parking estimate calibration", () => {
-  it("keeps default ratios and low confidence when outcome data is sparse", () => {
+  it("does not turn a student report into an availability estimate", () => {
     const now = new Date("2026-09-18T16:00:00.000Z");
     const liveReport = report(1, "filling_up", now);
     const estimate = estimateGarageAvailability(
@@ -66,11 +66,13 @@ describe("parking estimate calibration", () => {
       now,
     );
 
-    expect(estimate.availableSpots).toBe(25);
-    expect(estimate.availabilityConfidence).toBe("low");
+    expect(estimate.availableSpots).toBe(50);
+    expect(estimate.availabilitySource).toBe("demo");
+    expect(estimate.availabilityReportCount).toBe(0);
+    expect(estimate.availabilityConfidence).toBe("unavailable");
   });
 
-  it("learns a location's category ratio after enough trusted outcomes", () => {
+  it("never uses report calibration to recalculate availability", () => {
     const base = new Date("2026-09-18T10:00:00.000Z");
     const calibrationReports = Array.from({ length: 20 }, (_, index) =>
       report(index + 1, "full", new Date(base.getTime() + index * 60_000)),
@@ -89,8 +91,9 @@ describe("parking estimate calibration", () => {
       now,
     );
 
-    expect(estimate.availableSpots).toBe(20);
-    expect(estimate.availabilityConfidence).toBe("high");
+    expect(estimate.availableSpots).toBe(50);
+    expect(estimate.availabilitySource).toBe("demo");
+    expect(estimate.availabilityConfidence).toBe("unavailable");
   });
 
   it("weights recent report outcomes more than older ones", () => {

@@ -320,11 +320,12 @@ describe("parking report routes", () => {
     expect(response.status).toBe(201);
     const lot = (await request(app).get(`/api/garages/${reportOnlyGarageId}`)).body;
     expect(lot).toMatchObject({
-      latestReportStatus: "filling_up", availabilityUpdatedAt: response.body.createdAt,
+      latestReportStatus: null, availabilityUpdatedAt: null,
       availabilitySource: "user_reports_only", availableSpots: null, occupancyPercent: null,
     });
     const history = (await request(app).get(`/api/garages/${reportOnlyGarageId}/reports`)).body;
     expect(history).toHaveLength(1);
+    expect(history[0].availabilityStatus).toBe("filling_up");
   });
 
   it("lists reports newest first, using id as a stable timestamp tie-breaker", async () => {
@@ -384,7 +385,7 @@ describe("parking report routes", () => {
     });
   });
 
-  it("uses recent verified reports consistently across detail, list, and summary", async () => {
+  it("keeps availability independent of verified reports across detail, list, and summary", async () => {
     await db
       .delete(parkingReportsTable)
       .where(eq(parkingReportsTable.garageId, garageId));
@@ -423,13 +424,13 @@ describe("parking report routes", () => {
     );
 
     expect(detail.body).toMatchObject({
-      availableSpots: 28,
-      occupancyPercent: 72,
-      availabilitySource: "verified_reports",
-      availabilityConfidence: "high",
+      availableSpots: 50,
+      occupancyPercent: 50,
+      availabilitySource: "demo",
+      availabilityConfidence: "unavailable",
       availabilityIsStale: false,
-      availabilityReportCount: 3,
-      availabilityUpdatedAt: reportedAt.toISOString(),
+      availabilityReportCount: 0,
+      availabilityUpdatedAt: null,
     });
     expect(listedGarage).toEqual(detail.body);
     expect(summary.body.openSpots).toBe(
@@ -439,8 +440,39 @@ describe("parking report routes", () => {
         0,
       ),
     );
-    expect(summary.body.liveGaragesCount).toBeGreaterThanOrEqual(1);
+    expect(summary.body.liveGaragesCount).toBe(
+      list.body.filter((garage: { availabilitySource: string }) => garage.availabilitySource === "live_update").length,
+    );
     expect(summary.body.demoGaragesCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it("preserves live count and marker status when a newer report is submitted", async () => {
+    const updatedAt = new Date(Date.now() - 2 * 60_000);
+    await db.update(garagesTable).set({ availabilityUpdatedAt: updatedAt }).where(eq(garagesTable.id, garageId));
+    try {
+      const before = (await request(app).get(`/api/garages/${garageId}`).expect(200)).body;
+      const userId = `live-report-${randomUUID()}`;
+      await db.insert(userProfilesTable).values({ userId, authUserId: userId, displayName: "Test" });
+      testUsers.push(userId);
+      const report = await request(app).post(`/api/garages/${garageId}/reports`)
+        .set("x-test-user-id", userId)
+        .send({ availabilityStatus: "full", note: "Entrance is blocked right now.",
+          location: { latitude: 0, longitude: 0, accuracy: 5, timestamp: Date.now() } }).expect(201);
+      expect([10, 15]).toContain(report.body.pointsEarned);
+      expect(report.body.note).toBe("Entrance is blocked right now.");
+      const after = (await request(app).get(`/api/garages/${garageId}`).expect(200)).body;
+      expect(after).toEqual(before);
+      expect(after).toMatchObject({ availableSpots: 50, occupancyPercent: 50, status: "open",
+        availabilitySource: "live_update", availabilityUpdatedAt: updatedAt.toISOString(), availabilityReportCount: 0 });
+      const listed = (await request(app).get("/api/garages").expect(200)).body.find((row: { id: string }) => row.id === garageId);
+      expect(listed).toEqual(before);
+      const reports = (await request(app).get(`/api/garages/${garageId}/reports`).expect(200)).body;
+      expect(reports.find((row: { id: number }) => row.id === report.body.id)).toMatchObject({
+        availabilityStatus: "full", note: report.body.note, createdAt: report.body.createdAt,
+      });
+    } finally {
+      await db.update(garagesTable).set({ availabilityUpdatedAt: null }).where(eq(garagesTable.id, garageId));
+    }
   });
 
   it("expires older verified reports without deleting their history", async () => {

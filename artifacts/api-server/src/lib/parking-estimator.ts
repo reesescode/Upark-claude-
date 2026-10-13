@@ -110,6 +110,8 @@ export function estimateGarageAvailability(
   now = new Date(),
   allowDirectUpdate = true,
 ) {
+  // Reports are display-only; only the existing live source may drive availability.
+  reports = [];
   const cutoff = now.getTime() - LIVE_WINDOW_MS;
   const latestByStudent = new Map<string, AvailabilityReport>();
   for (const report of reports) {

@@ -135,10 +135,10 @@ describe("official FGCU parking feed", () => {
       garageId,
       availableSpots: 40,
       totalSpots: 100,
-      precedingEstimateSpots: 25,
-      precedingEstimateSource: "verified_reports",
-      precedingEstimateConfidence: "low",
-      precedingReportCount: 1,
+      precedingEstimateSpots: null,
+      precedingEstimateSource: "demo",
+      precedingEstimateConfidence: "unavailable",
+      precedingReportCount: 0,
     });
   });
 });

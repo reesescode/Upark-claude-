@@ -1,13 +1,13 @@
 ---
 name: Parking availability trust
-description: Trust boundary for deciding which parking reports may affect student-facing live estimates.
+description: Keep student parking reports separate from live parking availability.
 ---
 
-Only explicitly verified reports may affect live parking availability. A student identifier supplied by the client is not proof of identity, so unverified submissions can remain visible as reports but must not replace demo fallback counts.
+No student reports may affect live parking availability, even when account and proximity are verified. Live counts, occupancy, marker colors/status and live summary totals must depend only on the existing live data source, never reports or report calibration.
 
-**Why:** Calling locally supplied identifiers “verified” would create false confidence and could let anyone manipulate the campus-wide estimate.
+**Why:** The user explicitly requires reports to be display-only observations, not an input to live parking counts. Identity/location verification does not establish a numerical count.
 
-**How to apply:** Any new authentication or reporting flow must set verification from server-owned identity evidence. Keep unverified records excluded from availability aggregation until that evidence exists.
+**How to apply:** Keep report creation, notes, GPS verification, rewards and history intact, but never use reports to increase, decrease, override or recalculate availability.
 
 Do not award rewards retroactively for legacy reports: their proximity was never verified. Clearing visible parking history must not reset reward totals, daily limits, or duplicate protection; account deletion still removes that user's rewards.
 
@@ -19,7 +19,7 @@ FGCU lots P6, P7, and P8 must remain “User Reports Only,” not live availabil
 
 **Why:** The product explicitly distinguishes student-reported lot conditions from the other garages' live parking system; a reported status is not a live space count.
 
-**How to apply:** Preserve reporting and navigation for these lots. Show the latest active student status and its age, or “No Recent Reports,” using neutral styling without estimated counts.
+**How to apply:** Preserve reporting and navigation for these lots. Keep their availability cards/markers neutral and direct users to the Reports section; report status and timestamps belong there only.
 
 Verification of a parking reporter's account and location does not verify the content of their free-text note. Notes must remain labeled “User Reported”; emergency mentions need an explicit unverified-information warning and a 911/campus-police reminder.
 

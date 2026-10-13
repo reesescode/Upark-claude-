@@ -66,10 +66,6 @@ function toGarage(
   now = new Date(),
 ) {
   if (isReportOnlyLot(record)) {
-    const activeReports = reports.filter((report) =>
-      report.createdAt.getTime() <= now.getTime() && report.createdAt.getTime() > now.getTime() - REPORT_EXPIRY_MS,
-    ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    const latest = activeReports[0];
     return {
       ...record,
       type: record.type === "lot" ? ("lot" as const) : ("garage" as const),
@@ -79,9 +75,9 @@ function toGarage(
       availabilitySource: "user_reports_only" as const,
       availabilityConfidence: "unavailable" as const,
       availabilityIsStale: false,
-      availabilityReportCount: activeReports.length,
-      availabilityUpdatedAt: latest?.createdAt.toISOString() ?? null,
-      latestReportStatus: latest?.availabilityStatus ?? null,
+      availabilityReportCount: 0,
+      availabilityUpdatedAt: null,
+      latestReportStatus: null,
       updatedAt: record.updatedAt.toISOString(),
     };
   }
