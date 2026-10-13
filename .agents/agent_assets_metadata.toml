@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "xEBNTFq-kd4HhRaR6aoLI"
+uri = "file://.local/device-checks/google-maps.html"
+type = "html"
+title = "U Park real-device Google Maps checklist"
+description = "56 unperformed checks covering seven parking destinations, both Navigate buttons, and iPhone/Android with Google Maps installed or absent. Includes CSV export for recording results."
+logical_id = "5016879d-9f96-44bc-aeee-e4d095a77c7f"
+content_hash = "sha256:deca44f9fa9dbd032f0dac584b1534c9a6af318a9699829a3fa062eb0e65bb5e"
+size = 6784
+mtime_ms = 1791920896513
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:da2c2743-ac85-427f-9529-f4d935747558/5016879d-9f96-44bc-aeee-e4d095a77c7f/a60a8e6d-85da-4cf4-9a57-146c02322fab"
+storage_version_token = "1791920944660328"
+content_type = "text/html"
