@@ -19,7 +19,6 @@ import Home from '@/pages/Home';
 import Map from '@/pages/Map';
 import Garages from '@/pages/Garages';
 import GarageDetails from '@/pages/GarageDetails';
-import Navigate from '@/pages/Navigate';
 import Favorites from '@/pages/Favorites';
 import Profile from '@/pages/Profile';
 import Leaderboard from '@/pages/Leaderboard';
@@ -84,7 +83,6 @@ function Router() {
         <Route path="/map" component={Map} />
         <Route path="/garages" component={Garages} />
         <Route path="/garages/:id" component={GarageDetails} />
-        <Route path="/navigate/:id" component={Navigate} />
         <Route path="/favorites" component={Favorites} />
         <Route path="/profile" component={Profile} />
         <Route path="/leaderboard" component={Leaderboard} />

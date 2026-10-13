@@ -30,12 +30,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ChevronLeft, Navigation, Heart, Clock, DollarSign, Info, MapPin, Map as MapIcon, Footprints, MessageSquarePlus, CheckCircle2, Loader2 } from "lucide-react";
+import { ChevronLeft, Navigation, Heart, Clock, DollarSign, Info, MapPin, Map as MapIcon, MessageSquarePlus, CheckCircle2, Loader2 } from "lucide-react";
 import { getStatusColor, getStatusText, getStatusColorSolid } from "@/lib/garage-utils";
 import { useFavorites, useUser } from "@/hooks/use-local-data";
 import { cn } from "@/lib/utils";
 import { getAvailabilityLabel, getLatestReportLabel, isUserReportsOnly } from "@/lib/availability-utils";
 import { getReportLocation } from "@/lib/report-location";
+import { getGoogleMapsUrl, getGoogleMapsTarget } from "@/lib/google-maps";
 
 const reportOptions: Array<{
   value: ParkingReportInputAvailabilityStatus;
@@ -333,25 +334,6 @@ export default function GarageDetails() {
           </DialogTrigger>
         </div>
 
-        {/* Info Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex flex-col items-center text-center justify-center">
-            <div className="w-12 h-12 bg-blue-50 text-primary rounded-2xl flex items-center justify-center mb-3">
-              <Clock size={24} />
-            </div>
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Drive Time</span>
-            <span className="text-lg font-bold text-gray-900">{garage.driveTimeMinutes} min</span>
-          </div>
-          
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex flex-col items-center text-center justify-center">
-            <div className="w-12 h-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center mb-3">
-              <Footprints size={24} />
-            </div>
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Walk to Class</span>
-            <span className="text-lg font-bold text-gray-900">{garage.walkingTimeMinutes} min</span>
-          </div>
-        </div>
-
         {/* Details List */}
         <div className="bg-white rounded-3xl p-2 shadow-sm border border-gray-100">
           <div className="p-4 flex items-start gap-4 border-b border-gray-50">
@@ -556,12 +538,12 @@ export default function GarageDetails() {
           <Button variant="outline" className="w-16 h-16 rounded-2xl flex-shrink-0 bg-white" onClick={() => setLocation("/map")}>
             <MapIcon size={24} className="text-gray-700" />
           </Button>
-          <Link href={`/navigate/${garage.id}`} className="flex-1">
-            <Button size="lg" className="w-full h-16 text-lg rounded-2xl gap-2 shadow-lg shadow-primary/25 hover-elevate">
+          <Button asChild size="lg" className="flex-1 h-16 text-lg rounded-2xl gap-2 shadow-lg shadow-primary/25 hover-elevate">
+            <a href={getGoogleMapsUrl(garage)} target={getGoogleMapsTarget()} rel="noopener noreferrer">
               <Navigation size={22} className="fill-white" />
               Navigate Here
-            </Button>
-          </Link>
+            </a>
+          </Button>
         </div>
       </div>
       </AppLayout>

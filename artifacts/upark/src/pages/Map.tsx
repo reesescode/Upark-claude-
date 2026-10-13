@@ -20,6 +20,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getAvailabilityLabel, getLatestReportLabel, isUserReportsOnly } from "@/lib/availability-utils";
+import { getGoogleMapsUrl, getGoogleMapsTarget } from "@/lib/google-maps";
 
 const CAMPUS_CENTER: [number, number] = [26.462647, -81.772749];
 
@@ -401,12 +402,14 @@ export default function CampusMap() {
                 >
                   View Garage
                 </Link>
-                <Link
-                  href={`/navigate/${selectedGarage.id}`}
+                <a
+                  href={getGoogleMapsUrl(selectedGarage, userLocation)}
+                  target={getGoogleMapsTarget()}
+                  rel="noopener noreferrer"
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-[15px] font-bold text-primary-foreground shadow-sm shadow-primary/20 transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   <Navigation size={18} aria-hidden="true" /> Navigate
-                </Link>
+                </a>
               </div>
 
               <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-medium text-gray-400 bg-gray-50/50 py-2 rounded-lg border border-gray-100/50">

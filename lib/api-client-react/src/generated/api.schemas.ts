@@ -5,49 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-/**
- * @minItems 2
- * @maxItems 2
- */
-export type RouteCoordinate = [number, number];
-
-export interface RouteOriginInput {
-  /**
-     * @minimum -90
-     * @maximum 90
-     */
-  originLat: number;
-  /**
-     * @minimum -180
-     * @maximum 180
-     */
-  originLng: number;
-}
-
-export interface DrivingRoute {
-  /** @minimum 0 */
-  distanceMeters: number;
-  /** @minimum 0 */
-  durationSeconds: number;
-  /** @minItems 2 */
-  coordinates: RouteCoordinate[];
-}
-
-export type RoutingErrorCode = typeof RoutingErrorCode[keyof typeof RoutingErrorCode];
-
-
-export const RoutingErrorCode = {
-  INVALID_ROUTE_REQUEST: 'INVALID_ROUTE_REQUEST',
-  GARAGE_NOT_FOUND: 'GARAGE_NOT_FOUND',
-  ROUTE_RATE_LIMITED: 'ROUTE_RATE_LIMITED',
-  ROUTE_UNAVAILABLE: 'ROUTE_UNAVAILABLE',
-} as const;
-
-export interface RoutingError {
-  error: string;
-  code: RoutingErrorCode;
-}
-
 export interface HealthStatus {
   status: string;
 }
@@ -119,8 +76,6 @@ export interface Garage {
   /** @nullable */
   occupancyPercent: number | null;
   distanceMiles: number;
-  driveTimeMinutes: number;
-  walkingTimeMinutes: number;
   status: GarageStatus;
   openHours: string;
   price: string;

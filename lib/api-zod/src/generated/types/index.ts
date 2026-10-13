@@ -7,7 +7,6 @@
  */
 
 export * from './campusSummary';
-export * from './drivingRoute';
 export * from './garage';
 export * from './garageAvailabilityConfidence';
 export * from './garageAvailabilitySource';
@@ -28,10 +27,6 @@ export * from './parkingReportInputAvailabilityStatus';
 export * from './parkingReportRateLimitError';
 export * from './reportLocation';
 export * from './rewardsSummary';
-export * from './routeCoordinate';
-export * from './routeOriginInput';
-export * from './routingError';
-export * from './routingErrorCode';
 export * from './supportRequest';
 export * from './supportRequestInput';
 export * from './supportRequestInputWouldRecommend';

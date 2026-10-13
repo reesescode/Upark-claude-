@@ -23,8 +23,6 @@ export interface Garage {
   /** @nullable */
   occupancyPercent: number | null;
   distanceMiles: number;
-  driveTimeMinutes: number;
-  walkingTimeMinutes: number;
   status: GarageStatus;
   openHours: string;
   price: string;
