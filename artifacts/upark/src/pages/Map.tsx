@@ -21,7 +21,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getAvailabilityLabel, getLatestReportLabel, isUserReportsOnly } from "@/lib/availability-utils";
 
-const CAMPUS_CENTER: [number, number] = [26.462647, -81.779026];
+const CAMPUS_CENTER: [number, number] = [26.462647, -81.772749];
 
 function getGarageStatusInfo(occupancyPercent: number | null) {
   if (occupancyPercent === null) return {
