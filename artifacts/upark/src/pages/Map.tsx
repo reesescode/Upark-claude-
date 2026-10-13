@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useCallback } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
   useListGarages,
@@ -145,6 +145,13 @@ function MapController({
   userLocation: { lat: number; lng: number } | null;
 }) {
   const map = useMap();
+
+  useLayoutEffect(() => () => {
+    // Run before MapContainer removes its panes. Leaflet 1.9's zoom timeout
+    // is not cancelled by stop()/remove(), so make its late callback a no-op.
+    map.stop();
+    (map as L.Map & { _animatingZoom?: boolean })._animatingZoom = false;
+  }, [map]);
 
   useEffect(() => {
     if (selectedGarage) {

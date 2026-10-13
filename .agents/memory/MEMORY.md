@@ -10,3 +10,4 @@
 - [Onboarding eligibility](onboarding-eligibility.md) — keep the original new-account cutoff fixed; an absent completion marker alone does not identify a new user.
 - [Shared database tests](shared-database-tests.md) — parallel suites share PostgreSQL; run campus-total assertions without file parallelism.
 - [Google Maps navigation](google-maps-navigation.md) — directions are external; do not restore internal routes or estimates, or delete legacy travel-time data.
+- [Leaflet animation lifecycle](leaflet-animation-lifecycle.md) — clean up before map removal; preserve animations and verify exits while animation is still active.

@@ -52,9 +52,6 @@ test("campus map keeps markers and sends navigation to Google Maps", async ({
   );
   await expect(navigationLink).toHaveAttribute("target", "_blank");
 
-  // Let Leaflet's existing selection animation finish before leaving its map.
-  await page.waitForTimeout(350);
-  await expect(page.locator(".leaflet-zoom-anim")).toHaveCount(0);
   await detailLink.click();
   await expect(page).toHaveURL(/\/garages\/library-garage$/);
   await expect(
@@ -85,6 +82,36 @@ test("campus map keeps markers and sends navigation to Google Maps", async ({
   await expect(page).toHaveURL(/\/map$/);
   await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(0);
 });
+
+for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+  test(`opening garage details during map zoom is safe at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto("/map");
+    await expect(page.getByRole("button", { name: /Parking Garage 3: \d+ spaces available/ })).toBeVisible();
+
+    await page.getByPlaceholder("Search campus...").fill("Garage 3");
+    await page.locator(".leaflet-zoom-anim").waitFor({ state: "attached" });
+    await page.getByRole("link", { name: "View Garage" }).evaluate(link => {
+      // Activate immediately, without Playwright waiting for map animation stability.
+      if (!document.querySelector(".leaflet-zoom-anim")) {
+        throw new Error("Regression check must leave while the zoom is active");
+      }
+      (link as HTMLAnchorElement).click();
+    });
+    await expect(page).toHaveURL(/\/garages\/library-garage$/);
+    // Observe beyond Leaflet's 250ms fallback timer to catch delayed errors.
+    await page.waitForTimeout(350);
+    expect(errors).toEqual([]);
+    await expect(page.locator("vite-error-overlay")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Parking Garage 3" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Navigate Here" })).toHaveAttribute(
+      "href",
+      "https://www.google.com/maps/dir/?api=1&destination=26.4667616%2C-81.774101&travelmode=driving",
+    );
+  });
+}
 
 test("map navigation includes the location already shown on the map", async ({ page }) => {
   await page.addInitScript(() => {
