@@ -294,7 +294,7 @@ export default function CampusMap() {
       <div className="absolute inset-0 z-0 bg-[#E8F0F2]">
         <MapContainer
           center={CAMPUS_CENTER}
-          zoom={16}
+          zoom={15}
           zoomControl={false}
           minZoom={14}
           maxZoom={19}
